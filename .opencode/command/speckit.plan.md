@@ -75,7 +75,7 @@ $ARGUMENTS
    - 将 OpenAPI/GraphQL 模式输出到 `/contracts/`
 
 3. **代理上下文更新**: 
-   - 运行 `.specify/scripts/bash/update-agent-context.sh codex`
+   - 运行 `.specify/scripts/bash/update-agent-context.sh opencode`
    - 这些脚本检测正在使用哪个 AI 代理
    - 更新相应的代理特定上下文文件
    - 仅添加当前计划中的新技术
