@@ -72,6 +72,28 @@
 
 **理由**: 用户可能导入大量媒体文件，性能问题会导致 Anki 卡顿甚至崩溃。
 
+## 子项目: Anki_Mdict
+
+Anki_Mdict 是 ListenSpeak 项目的独立子项目，用于分词和辞典查询功能。以下条款补充核心原则：
+
+### 命名规范（覆盖 I. 代码质量）
+
+- **媒体文件命名**: `_mdict_{dict_id}_{type}_{index}.{ext}`
+- **分词器资源**: `_mdict_kuromoji_*.dat.gz`, `_mdict_compromise.min.js`
+- **配置文件**: `_mdict_config.json`
+
+### 测试覆盖（覆盖 II. 测试标准）
+
+核心模块必须有单元测试：
+- `mdx_processor` - MDX 解析与 JSON 分片
+- `dict_manager` - 辞典管理（导入/删除/排序）
+- `tokenizer_config` - 分词系统配置
+
+### 模板架构（覆盖技术约束）
+
+- JS 代码采用命名空间模块（`MD.Tokenizer`、`MD.Dictionary`、`MD.Config`、`MD.UI`）
+- 卡片端通过 localStorage 持久化用户配置
+
 ## 技术约束
 
 ### 依赖管理
