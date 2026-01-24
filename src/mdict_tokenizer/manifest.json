@@ -1,0 +1,9 @@
+{
+    "package": "mdict_tokenizer",
+    "name": "MDict Tokenizer",
+    "version": "1.0.0",
+    "author": "Anki_Mdict",
+    "homepage": "",
+    "conflicts": [],
+    "mod": 0
+}

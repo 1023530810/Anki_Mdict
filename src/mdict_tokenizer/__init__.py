@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Optional
 
 try:
@@ -18,11 +19,45 @@ except Exception:  # pragma: no cover - 在非 Anki 环境下跳过
 
 from .config import ensure_config, get_media_dir_from_mw
 
+# 插件目录常量
+ADDON_DIR = Path(__file__).parent
+MEDIA_DIR = ADDON_DIR / "media"
+
+
+def install_media_files() -> None:
+    """安装 media 文件到 Anki collection.media 目录"""
+    if mw is None:
+        return
+
+    # 获取 Anki collection.media 目录
+    try:
+        collection_media_dir = Path(mw.col.media.dir())
+    except Exception:
+        return
+
+    # 检查插件 media 目录是否存在
+    if not MEDIA_DIR.exists():
+        return
+
+    # 复制所有 media 文件
+    import shutil
+    for src_file in MEDIA_DIR.iterdir():
+        if src_file.is_file():
+            dest_file = collection_media_dir / src_file.name
+            # 只在文件不存在或源文件更新时复制
+            if not dest_file.exists() or src_file.stat().st_mtime > dest_file.stat().st_mtime:
+                shutil.copy2(src_file, dest_file)
+
 
 def on_profile_loaded() -> None:
     """配置加载后初始化"""
     if mw is None:
         return
+
+    # 首先安装 media 文件
+    install_media_files()
+
+    # 然后初始化配置
     media_dir = get_media_dir_from_mw(mw)
     ensure_config(media_dir)
 
