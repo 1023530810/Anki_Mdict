@@ -108,7 +108,17 @@
         });
         return;
       }
-      window.MD.UI.showPopup(result.definition, {
+      var readingInfo = "";
+      if (config.readingMode === "lookup") {
+        if (token.reading) {
+          readingInfo += "<div class=\"md-token-reading\">" + token.reading + "</div>";
+        }
+        if (token.ipa) {
+          readingInfo += "<div class=\"md-token-ipa\">" + token.ipa + "</div>";
+        }
+      }
+      var content = readingInfo ? readingInfo + result.definition : result.definition;
+      window.MD.UI.showPopup(content, {
         title: result.dictionaryName || word,
         showDictSwitch: true,
       });

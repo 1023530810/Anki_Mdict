@@ -145,6 +145,84 @@
     popupEl.classList.add("md-popup-hidden");
   }
 
+  function applyFontSize(config) {
+    if (!config || !config.fontSize) {
+      return;
+    }
+    document.documentElement.style.setProperty("--md-font-size", config.fontSize + "px");
+  }
+
+  function applyConfig(config) {
+    applyFontSize(config);
+    if (window.MD && window.MD.Tokenizer && window.MD.Tokenizer.updateTokenDisplay) {
+      window.MD.Tokenizer.updateTokenDisplay(config);
+    }
+  }
+
+  function createSelect(options, value) {
+    var select = document.createElement("select");
+    options.forEach(function (option) {
+      var item = document.createElement("option");
+      item.value = option.value;
+      item.textContent = option.label;
+      select.appendChild(item);
+    });
+    select.value = value;
+    return select;
+  }
+
+  function createRow(labelText, control) {
+    var row = document.createElement("label");
+    row.className = "md-config-row";
+    var title = document.createElement("span");
+    title.className = "md-config-label";
+    title.textContent = labelText;
+    row.appendChild(title);
+    row.appendChild(control);
+    return row;
+  }
+
+  function buildDictionarySection(config) {
+    var wrapper = document.createElement("div");
+    wrapper.className = "md-config-section";
+    var title = document.createElement("div");
+    title.className = "md-config-subtitle";
+    title.textContent = "启用辞典";
+    wrapper.appendChild(title);
+
+    var dicts = window.MD.Dictionary.getDictionaries();
+    var enabled = config.enabledDictionaries && config.enabledDictionaries.length
+      ? config.enabledDictionaries
+      : dicts.map(function (dict) { return dict.id; });
+    if (!config.enabledDictionaries || !config.enabledDictionaries.length) {
+      config.enabledDictionaries = enabled;
+      window.MD.Config.set("enabledDictionaries", enabled);
+    }
+
+    dicts.forEach(function (dict) {
+      var item = document.createElement("label");
+      item.className = "md-config-dict-item";
+      var checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = enabled.indexOf(dict.id) !== -1;
+      checkbox.addEventListener("change", function () {
+        var selected = [];
+        wrapper.querySelectorAll("input[type=checkbox]").forEach(function (box, index) {
+          if (box.checked && dicts[index]) {
+            selected.push(dicts[index].id);
+          }
+        });
+        window.MD.Config.set("enabledDictionaries", selected);
+      });
+      var label = document.createElement("span");
+      label.textContent = dict.name;
+      item.appendChild(checkbox);
+      item.appendChild(label);
+      wrapper.appendChild(item);
+    });
+    return wrapper;
+  }
+
   function showConfig() {
     var panel = document.querySelector(".md-config-panel");
     if (panel) {
@@ -155,13 +233,101 @@
     panel.className = "md-config-panel";
     var config = window.MD.Config.getAll();
 
-    panel.innerHTML =
-      "<div class=\"md-config-title\">卡片配置</div>" +
-      "<label>字体大小<input type=\"number\" min=\"12\" max=\"32\" step=\"2\" value=\"" +
-      config.fontSize +
-      "\"></label>" +
-      "<label>分词样式<select><option value=\"underline\">下划线</option><option value=\"background\">背景色</option><option value=\"none\">无</option></select></label>";
+    var title = document.createElement("div");
+    title.className = "md-config-title";
+    title.textContent = "卡片配置";
+    panel.appendChild(title);
 
+    panel.appendChild(buildDictionarySection(config));
+
+    var readingSelect = createSelect(
+      [
+        { value: "none", label: "不显示" },
+        { value: "lookup", label: "仅查词后" },
+        { value: "all", label: "显示全部" },
+      ],
+      config.readingMode
+    );
+    readingSelect.addEventListener("change", function () {
+      window.MD.Config.set("readingMode", readingSelect.value);
+      applyConfig(window.MD.Config.getAll());
+    });
+    panel.appendChild(createRow("注音/音标显示", readingSelect));
+
+    var lemmaToggle = document.createElement("input");
+    lemmaToggle.type = "checkbox";
+    lemmaToggle.checked = !!config.extractLemma;
+    lemmaToggle.addEventListener("change", function () {
+      window.MD.Config.set("extractLemma", lemmaToggle.checked);
+    });
+    panel.appendChild(createRow("提取原型", lemmaToggle));
+
+    var fontSizeInput = document.createElement("input");
+    fontSizeInput.type = "number";
+    fontSizeInput.min = "12";
+    fontSizeInput.max = "32";
+    fontSizeInput.step = "2";
+    fontSizeInput.value = config.fontSize;
+    fontSizeInput.addEventListener("change", function () {
+      window.MD.Config.set("fontSize", parseInt(fontSizeInput.value, 10) || 16);
+      applyConfig(window.MD.Config.getAll());
+    });
+    panel.appendChild(createRow("字体大小", fontSizeInput));
+
+    var clickSelect = createSelect(
+      [
+        { value: "click", label: "单击查词" },
+        { value: "longpress", label: "长按查词" },
+      ],
+      config.clickBehavior
+    );
+    clickSelect.addEventListener("change", function () {
+      window.MD.Config.set("clickBehavior", clickSelect.value);
+    });
+    panel.appendChild(createRow("分词点击", clickSelect));
+
+    var historySelect = createSelect(
+      [
+        { value: "10", label: "10 条" },
+        { value: "50", label: "50 条" },
+        { value: "100", label: "100 条" },
+      ],
+      String(config.historyLimit)
+    );
+    historySelect.addEventListener("change", function () {
+      window.MD.Config.set("historyLimit", parseInt(historySelect.value, 10) || 50);
+    });
+    panel.appendChild(createRow("历史记录数量", historySelect));
+
+    var heightSelect = createSelect(
+      [
+        { value: "small", label: "小" },
+        { value: "medium", label: "中" },
+        { value: "large", label: "大" },
+        { value: "full", label: "全屏" },
+      ],
+      config.popupHeight
+    );
+    heightSelect.addEventListener("change", function () {
+      window.MD.Config.set("popupHeight", heightSelect.value);
+    });
+    panel.appendChild(createRow("弹窗高度", heightSelect));
+
+    var styleSelect = createSelect(
+      [
+        { value: "underline", label: "下划线" },
+        { value: "background", label: "背景色" },
+        { value: "none", label: "无" },
+      ],
+      config.tokenStyle
+    );
+    styleSelect.addEventListener("change", function () {
+      window.MD.Config.set("tokenStyle", styleSelect.value);
+      applyConfig(window.MD.Config.getAll());
+    });
+    panel.appendChild(createRow("分词样式", styleSelect));
+
+    applyConfig(config);
     document.body.appendChild(panel);
   }
 

@@ -98,6 +98,13 @@
           })
         : ordered;
 
+      var userConfig = window.MD && window.MD.Config ? window.MD.Config.getAll() : null;
+      if (userConfig && userConfig.enabledDictionaries && userConfig.enabledDictionaries.length) {
+        candidates = candidates.filter(function (dict) {
+          return userConfig.enabledDictionaries.indexOf(dict.id) !== -1;
+        });
+      }
+
       var chain = Promise.resolve({ found: false });
       candidates.forEach(function (dict) {
         chain = chain.then(function (result) {

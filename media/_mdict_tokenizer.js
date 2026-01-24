@@ -199,12 +199,47 @@
     });
   }
 
-  function buildTokenSpan(token, config) {
-    var span = document.createElement("span");
+  function getRuntimeConfig() {
+    if (window.MD && window.MD.Config) {
+      return window.MD.Config.getAll();
+    }
+    return { readingMode: "lookup", tokenStyle: "underline", clickBehavior: "click" };
+  }
+
+  function applyTokenStyle(span, config) {
     span.className = "md-token tappable";
     if (config.tokenStyle) {
       span.className += " md-token-style-" + config.tokenStyle;
     }
+  }
+
+  function renderTokenDisplay(span, config) {
+    var surface = span.getAttribute("data-surface") || span.textContent;
+    var reading = span.dataset.reading || "";
+    var ipa = span.dataset.ipa || "";
+    span.innerHTML = "";
+    if (reading && config.readingMode === "all") {
+      var ruby = document.createElement("ruby");
+      ruby.textContent = surface;
+      var rt = document.createElement("rt");
+      rt.textContent = reading;
+      ruby.appendChild(rt);
+      span.appendChild(ruby);
+    } else {
+      span.textContent = surface;
+    }
+    if (ipa && config.readingMode === "all") {
+      var ipaNode = document.createElement("span");
+      ipaNode.className = "md-ipa";
+      ipaNode.textContent = ipa;
+      span.appendChild(ipaNode);
+    }
+  }
+
+  function buildTokenSpan(token, config) {
+    var span = document.createElement("span");
+    applyTokenStyle(span, config);
+    span.setAttribute("data-surface", token.surface);
     span.dataset.lemma = token.lemma || token.surface;
     span.dataset.pos = token.pos || "";
     if (token.reading) {
@@ -213,31 +248,70 @@
     if (token.ipa) {
       span.dataset.ipa = token.ipa;
     }
+    renderTokenDisplay(span, config);
 
-    if (token.reading && config.readingMode === "all") {
-      var ruby = document.createElement("ruby");
-      ruby.textContent = token.surface;
-      var rt = document.createElement("rt");
-      rt.textContent = token.reading;
-      ruby.appendChild(rt);
-      span.appendChild(ruby);
-    } else {
-      span.textContent = token.surface;
-    }
-
-    if (token.ipa && config.readingMode === "all") {
-      var ipaNode = document.createElement("span");
-      ipaNode.className = "md-ipa";
-      ipaNode.textContent = token.ipa;
-      span.appendChild(ipaNode);
-    }
-
-    span.addEventListener("click", function () {
+    var longPressTimer = null;
+    var longPressTriggered = false;
+    var triggerLookup = function () {
       if (window.MD && typeof window.MD.handleTokenClick === "function") {
         window.MD.handleTokenClick(token, span);
       }
+    };
+    var clearLongPress = function () {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+    };
+
+    span.addEventListener("click", function () {
+      var runtimeConfig = getRuntimeConfig();
+      if (runtimeConfig.clickBehavior !== "click") {
+        if (longPressTriggered) {
+          longPressTriggered = false;
+        }
+        return;
+      }
+      triggerLookup();
     });
+
+    span.addEventListener("touchstart", function () {
+      var runtimeConfig = getRuntimeConfig();
+      if (runtimeConfig.clickBehavior !== "longpress") {
+        return;
+      }
+      clearLongPress();
+      longPressTimer = setTimeout(function () {
+        longPressTriggered = true;
+        triggerLookup();
+      }, 500);
+    });
+
+    span.addEventListener("touchend", clearLongPress);
+    span.addEventListener("mousedown", function () {
+      var runtimeConfig = getRuntimeConfig();
+      if (runtimeConfig.clickBehavior !== "longpress") {
+        return;
+      }
+      clearLongPress();
+      longPressTimer = setTimeout(function () {
+        longPressTriggered = true;
+        triggerLookup();
+      }, 500);
+    });
+
+    span.addEventListener("mouseup", clearLongPress);
+    span.addEventListener("mouseleave", clearLongPress);
     return span;
+  }
+
+  function updateTokenDisplay(config) {
+    var runtimeConfig = config || getRuntimeConfig();
+    var tokens = document.querySelectorAll(".md-token");
+    tokens.forEach(function (span) {
+      applyTokenStyle(span, runtimeConfig);
+      renderTokenDisplay(span, runtimeConfig);
+    });
   }
 
   function tokenizeElement(element, language) {
@@ -286,6 +360,9 @@
     },
     tokenizeElement: function (element, language) {
       return tokenizeElement(element, language);
+    },
+    updateTokenDisplay: function (config) {
+      updateTokenDisplay(config);
     },
   };
 })();
