@@ -1,0 +1,118 @@
+.md-token {
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.md-token-style-underline {
+  text-decoration: underline;
+}
+
+.md-token-style-background {
+  background: rgba(255, 235, 59, 0.35);
+  border-radius: 2px;
+}
+
+.md-popup {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #fff;
+  border-top: 1px solid #ddd;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+  font-size: 14px;
+}
+
+.md-popup-hidden {
+  display: none;
+}
+
+.md-popup-small {
+  height: 30vh;
+}
+
+.md-popup-medium {
+  height: 50vh;
+}
+
+.md-popup-large {
+  height: 70vh;
+}
+
+.md-popup-full {
+  height: 100vh;
+}
+
+.md-popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #eee;
+  background: #f7f7f7;
+}
+
+.md-popup-content {
+  overflow: auto;
+  padding: 12px;
+  height: calc(100% - 92px);
+}
+
+.md-popup-controls {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.md-popup-input {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.md-popup-search,
+.md-popup-close {
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 4px;
+}
+
+.md-popup-dict-switch {
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+.md-config-panel,
+.md-history-panel {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 12px;
+  max-width: 240px;
+  z-index: 9998;
+}
+
+.md-history-item {
+  padding: 4px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.md-ipa {
+  font-size: 12px;
+  color: #666;
+  margin-left: 4px;
+}
+
+.md-empty {
+  color: #888;
+  text-align: center;
+  padding: 12px;
+}
