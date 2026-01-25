@@ -21,6 +21,7 @@ def _load_qt():
         "QTableWidget": qt.QTableWidget,
         "QTableWidgetItem": qt.QTableWidgetItem,
         "QVBoxLayout": qt.QVBoxLayout,
+        "Qt": qt.Qt,
     }
 
 
@@ -36,6 +37,18 @@ class TemplateInjectDialog:
 
         self._dialog.setWindowTitle("MDict 模板注入")
         self._dialog.resize(640, 420)
+
+        qt_core = qt["Qt"]
+        self._checked_state = (
+            qt_core.CheckState.Checked
+            if hasattr(qt_core, "CheckState")
+            else qt_core.Checked
+        )
+        self._unchecked_state = (
+            qt_core.CheckState.Unchecked
+            if hasattr(qt_core, "CheckState")
+            else qt_core.Unchecked
+        )
 
         self.note_type_box = qt["QComboBox"]()
         self.note_type_box.currentIndexChanged.connect(self.refresh_fields)
@@ -90,7 +103,7 @@ class TemplateInjectDialog:
         for index, field in enumerate(model.get("flds", [])):
             self.field_table.insertRow(index)
             field_item = self._qt["QTableWidgetItem"](field.get("name", ""))
-            field_item.setCheckState(0)
+            field_item.setCheckState(self._unchecked_state)
             self.field_table.setItem(index, 0, field_item)
 
             language_box = self._qt["QComboBox"]()
@@ -103,7 +116,7 @@ class TemplateInjectDialog:
         fields = []
         for row in range(self.field_table.rowCount()):
             item = self.field_table.item(row, 0)
-            if item is None or item.checkState() != 2:
+            if item is None or item.checkState() != self._checked_state:
                 continue
             language_box = self.field_table.cellWidget(row, 1)
             language = language_box.currentText() if language_box else "ja"
@@ -122,10 +135,14 @@ class TemplateInjectDialog:
     def on_clear(self) -> None:
         """清除注入"""
         model_id = self.note_type_box.currentData()
-        confirm = self._qt["QMessageBox"].question(
-            self._dialog, "确认", "确定清除注入？"
+        message_box = self._qt["QMessageBox"]
+        confirm = message_box.question(self._dialog, "确认", "确定清除注入？")
+        yes_button = (
+            message_box.StandardButton.Yes
+            if hasattr(message_box, "StandardButton")
+            else message_box.Yes
         )
-        if confirm != self._qt["QMessageBox"].Yes:
+        if confirm != yes_button:
             return
         try:
             self.injector.clear(int(model_id))

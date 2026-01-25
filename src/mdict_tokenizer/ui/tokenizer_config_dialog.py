@@ -22,6 +22,7 @@ def _load_qt():
         "QMessageBox": qt.QMessageBox,
         "QPushButton": qt.QPushButton,
         "QVBoxLayout": qt.QVBoxLayout,
+        "Qt": qt.Qt,
     }
 
 
@@ -37,6 +38,18 @@ class TokenizerConfigDialog:
 
         self._dialog.setWindowTitle("MDict 分词配置")
         self._dialog.resize(520, 400)
+
+        qt_core = qt["Qt"]
+        self._checked_state = (
+            qt_core.CheckState.Checked
+            if hasattr(qt_core, "CheckState")
+            else qt_core.Checked
+        )
+        self._unchecked_state = (
+            qt_core.CheckState.Unchecked
+            if hasattr(qt_core, "CheckState")
+            else qt_core.Unchecked
+        )
 
         self.language_box = qt["QComboBox"]()
         self.language_box.addItems(["ja", "en"])
@@ -94,7 +107,9 @@ class TokenizerConfigDialog:
             item = self._qt["QListWidgetItem"](dictionary.name)
             item.setData(256, dictionary.id)
             item.setCheckState(
-                2 if tokenizer and dictionary.id in tokenizer.dictionary_ids else 0
+                self._checked_state
+                if tokenizer and dictionary.id in tokenizer.dictionary_ids
+                else self._unchecked_state
             )
             self.dict_list.addItem(item)
 
@@ -104,7 +119,7 @@ class TokenizerConfigDialog:
         dictionary_ids = []
         for index in range(self.dict_list.count()):
             item = self.dict_list.item(index)
-            if item.checkState() == 2:
+            if item.checkState() == self._checked_state:
                 dictionary_ids.append(item.data(256))
         self.service.update_tokenizer(
             language=language,

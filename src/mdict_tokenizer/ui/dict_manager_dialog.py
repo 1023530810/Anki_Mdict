@@ -46,8 +46,19 @@ class DictManagerDialog:
         self._dialog.resize(640, 420)
 
         self.list_widget = qt["QListWidget"]()
-        self.list_widget.setSelectionMode(qt["QAbstractItemView"].SingleSelection)
-        self.list_widget.setDragDropMode(qt["QAbstractItemView"].InternalMove)
+        item_view = qt["QAbstractItemView"]
+        selection_mode = (
+            item_view.SelectionMode.SingleSelection
+            if hasattr(item_view, "SelectionMode")
+            else item_view.SingleSelection
+        )
+        drag_drop_mode = (
+            item_view.DragDropMode.InternalMove
+            if hasattr(item_view, "DragDropMode")
+            else item_view.InternalMove
+        )
+        self.list_widget.setSelectionMode(selection_mode)
+        self.list_widget.setDragDropMode(drag_drop_mode)
 
         self.import_button = qt["QPushButton"]("导入 MDX")
         self.import_button.clicked.connect(self.on_import)
@@ -169,10 +180,14 @@ class DictManagerDialog:
         if not dict_id:
             self._qt["QMessageBox"].warning(self._dialog, "提示", "请先选择辞典")
             return
-        confirm = self._qt["QMessageBox"].question(
-            self._dialog, "确认", "确定要删除该辞典吗？"
+        message_box = self._qt["QMessageBox"]
+        confirm = message_box.question(self._dialog, "确认", "确定要删除该辞典吗？")
+        yes_button = (
+            message_box.StandardButton.Yes
+            if hasattr(message_box, "StandardButton")
+            else message_box.Yes
         )
-        if confirm != self._qt["QMessageBox"].Yes:
+        if confirm != yes_button:
             return
         try:
             self.manager.delete_dictionary(dict_id)
