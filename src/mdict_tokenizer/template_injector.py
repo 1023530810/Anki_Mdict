@@ -30,7 +30,7 @@ class TemplateInjector:
         self.mw: object = mw
         self.media_dir: Path = media_dir
 
-    def inject(self, note_type_id: int, fields: list[dict[str, str]]) -> None:
+    def inject(self, note_type_id: int, fields: list[dict[str, str]]) -> list[str]:
         """注入模板"""
         model_manager = getattr(getattr(self.mw, "col", None), "models", None)
         model = model_manager.get(note_type_id) if model_manager else None
@@ -38,17 +38,19 @@ class TemplateInjector:
             raise RuntimeError("笔记类型不存在")
 
         script_block = build_script_block(fields)
+        field_stats = {field["name"]: False for field in fields if field.get("name")}
         for tmpl in model.get("tmpls", []):
             tmpl["qfmt"] = inject_template_html(
-                tmpl.get("qfmt", ""), fields, script_block
+                tmpl.get("qfmt", ""), fields, script_block, field_stats
             )
             tmpl["afmt"] = inject_template_html(
-                tmpl.get("afmt", ""), fields, script_block
+                tmpl.get("afmt", ""), fields, script_block, field_stats
             )
 
         if model_manager:
             model_manager.save(model)
         self._record_injection(model, fields)
+        return [name for name, found in field_stats.items() if not found]
 
     def clear(self, note_type_id: int) -> None:
         """清除注入"""
@@ -90,7 +92,10 @@ class TemplateInjector:
 
 
 def inject_template_html(
-    html: str, fields: list[dict[str, str]], script_block: str
+    html: str,
+    fields: list[dict[str, str]],
+    script_block: str,
+    field_stats: dict[str, bool] | None = None,
 ) -> str:
     """在模板中插入脚本与字段包裹"""
     updated = html
@@ -99,7 +104,9 @@ def inject_template_html(
         language = field.get("language")
         if not name or not language:
             continue
-        updated = wrap_field(updated, name, language)
+        updated, matched = wrap_field_with_report(updated, name, language)
+        if field_stats is not None and matched:
+            field_stats[name] = True
 
     if INJECT_BEGIN not in updated:
         updated = f"{updated}\n{script_block}"
@@ -108,10 +115,24 @@ def inject_template_html(
 
 def wrap_field(html: str, field_name: str, language: str) -> str:
     """包裹字段为可分词区域"""
-    if f'data-mdict-field="{field_name}"' in html:
-        return html
+    updated, _ = wrap_field_with_report(html, field_name, language)
+    return updated
 
-    pattern = re.compile(r"\{\{(?:[^}]*:)?%s\}\}" % re.escape(field_name))
+
+def wrap_field_with_report(
+    html: str, field_name: str, language: str
+) -> tuple[str, bool]:
+    """包裹字段并返回是否命中"""
+    if not html:
+        return html, False
+
+    protected_html, protected_spans, protected_hit = _protect_mdict_spans(
+        html, field_name
+    )
+    pattern = re.compile(r"\{\{\s*(?:[^}:]+\s*:\s*)*%s\s*\}\}" % re.escape(field_name))
+    matched = protected_hit or pattern.search(protected_html) is not None
+    if not matched:
+        return html, False
 
     def wrap_match(match: re.Match[str]) -> str:
         return (
@@ -120,7 +141,41 @@ def wrap_field(html: str, field_name: str, language: str) -> str:
             f'data-mdict-lang="{language}">{match.group(0)}</span>'
         )
 
-    return pattern.sub(wrap_match, html)
+    updated = pattern.sub(wrap_match, protected_html)
+    return _restore_mdict_spans(updated, protected_spans), True
+
+
+def _protect_mdict_spans(html: str, field_name: str) -> tuple[str, list[str], bool]:
+    """避免重复包裹已注入的字段"""
+    placeholders: list[str] = []
+    found = False
+
+    def replace_span(match: re.Match[str]) -> str:
+        nonlocal found
+        segment = match.group(0)
+        if (
+            f'data-mdict-field="{field_name}"' in segment
+            or f"data-mdict-field='{field_name}'" in segment
+        ):
+            found = True
+        placeholders.append(segment)
+        return f"__MDICT_SPAN_{len(placeholders) - 1}__"
+
+    protected_html = re.sub(
+        r'<span class="mdict-field"[^>]*>.*?</span>',
+        replace_span,
+        html,
+        flags=re.DOTALL,
+    )
+    return protected_html, placeholders, found
+
+
+def _restore_mdict_spans(html: str, placeholders: list[str]) -> str:
+    """恢复已保护的 mdict 容器"""
+    restored = html
+    for index, segment in enumerate(placeholders):
+        restored = restored.replace(f"__MDICT_SPAN_{index}__", segment)
+    return restored
 
 
 def build_script_block(fields: list[dict[str, str]]) -> str:

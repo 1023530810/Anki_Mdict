@@ -127,8 +127,18 @@ class TemplateInjectDialog:
             return
 
         try:
-            self.injector.inject(int(model_id), fields)
-            self._qt["QMessageBox"].information(self._dialog, "完成", "模板注入完成")
+            missing_fields = self.injector.inject(int(model_id), fields)
+            if missing_fields:
+                missing_text = "、".join(missing_fields)
+                self._qt["QMessageBox"].information(
+                    self._dialog,
+                    "提示",
+                    f"模板注入完成，但以下字段未在模板中找到，未启用分词：{missing_text}",
+                )
+            else:
+                self._qt["QMessageBox"].information(
+                    self._dialog, "完成", "模板注入完成"
+                )
         except Exception as exc:
             self._qt["QMessageBox"].warning(self._dialog, "失败", f"注入失败: {exc}")
 
