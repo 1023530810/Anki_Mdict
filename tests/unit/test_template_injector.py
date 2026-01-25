@@ -11,7 +11,11 @@ SRC_ROOT = ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from mdict_tokenizer.template_injector import inject_template_html, wrap_field
+from mdict_tokenizer.template_injector import (
+    build_script_block,
+    inject_template_html,
+    wrap_field,
+)
 
 
 def test_wrap_field_handles_text_filter() -> None:
@@ -53,6 +57,20 @@ def test_inject_template_tracks_missing_fields() -> None:
         {"name": "答案", "language": "ja"},
     ]
     field_stats = {field["name"]: False for field in fields}
-    inject_template_html(html, fields, "", field_stats)
+    updated = inject_template_html(html, fields, "", field_stats)
+    assert "mdict-field" in updated
     assert field_stats["正文"] is True
     assert field_stats["答案"] is False
+
+
+def test_inject_template_replaces_block_and_adds_style() -> None:
+    html = (
+        "<div>{{example_sentence}}</div>\n"
+        "<!-- mdict-tokenizer:begin -->OLD<!-- mdict-tokenizer:end -->"
+    )
+    fields = [{"name": "example_sentence", "language": "ja"}]
+    script_block = build_script_block(fields)
+    updated = inject_template_html(html, fields, script_block)
+    assert "_mdict_style.css" in updated
+    assert "OLD" not in updated
+    assert updated.count("mdict-tokenizer:begin") == 1

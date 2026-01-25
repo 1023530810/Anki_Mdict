@@ -108,7 +108,13 @@ def inject_template_html(
         if field_stats is not None and matched:
             field_stats[name] = True
 
-    if INJECT_BEGIN not in updated:
+    if INJECT_BEGIN in updated:
+        updated = re.sub(
+            rf"{re.escape(INJECT_BEGIN)}[\s\S]*?{re.escape(INJECT_END)}",
+            script_block,
+            updated,
+        )
+    else:
         updated = f"{updated}\n{script_block}"
     return updated
 
@@ -183,6 +189,7 @@ def build_script_block(fields: list[dict[str, str]]) -> str:
     field_payload = json_dumps(fields)
     return (
         f"{INJECT_BEGIN}\n"
+        '<link rel="stylesheet" href="_mdict_style.css">\n'
         '<script src="_mdict_config.js"></script>\n'
         '<script src="_mdict_tokenizer.js"></script>\n'
         '<script src="_mdict_dictionary.js"></script>\n'
