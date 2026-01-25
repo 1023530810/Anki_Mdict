@@ -111,13 +111,16 @@ def wrap_field(html: str, field_name: str, language: str) -> str:
     if f'data-mdict-field="{field_name}"' in html:
         return html
 
-    pattern = re.compile(r"\{\{%s\}\}" % re.escape(field_name))
-    replacement = (
-        f'<span class="mdict-field" '
-        f'data-mdict-field="{field_name}" '
-        f'data-mdict-lang="{language}">{{{{{field_name}}}}}</span>'
-    )
-    return pattern.sub(replacement, html)
+    pattern = re.compile(r"\{\{(?:[^}]*:)?%s\}\}" % re.escape(field_name))
+
+    def wrap_match(match: re.Match[str]) -> str:
+        return (
+            f'<span class="mdict-field" '
+            f'data-mdict-field="{field_name}" '
+            f'data-mdict-lang="{language}">{match.group(0)}</span>'
+        )
+
+    return pattern.sub(wrap_match, html)
 
 
 def build_script_block(fields: list[dict[str, str]]) -> str:
