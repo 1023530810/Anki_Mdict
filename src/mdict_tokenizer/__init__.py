@@ -41,12 +41,17 @@ def install_media_files() -> None:
 
     # 复制所有 media 文件
     import shutil
+
     for src_file in MEDIA_DIR.iterdir():
-        if src_file.is_file():
-            dest_file = collection_media_dir / src_file.name
-            # 只在文件不存在或源文件更新时复制
-            if not dest_file.exists() or src_file.stat().st_mtime > dest_file.stat().st_mtime:
-                shutil.copy2(src_file, dest_file)
+        if not src_file.is_file():
+            continue
+        dest_file = collection_media_dir / src_file.name
+        # 只在文件不存在或源文件更新时复制
+        if (
+            not dest_file.exists()
+            or src_file.stat().st_mtime > dest_file.stat().st_mtime
+        ):
+            shutil.copy2(src_file, dest_file)
 
 
 def on_profile_loaded() -> None:
