@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-MEDIA = ROOT / "media"
+MEDIA = ROOT / "src" / "mdict_tokenizer" / "media"
 
 
 def _read_media_file(name: str) -> str:
@@ -49,3 +49,10 @@ def test_tokenizer_exposes_update_display() -> None:
     content = _read_media_file("_mdict_tokenizer.js")
     assert "updateTokenDisplay" in content
     assert "data-surface" in content
+
+
+def test_main_init_gates_languages_by_fields_and_dicts() -> None:
+    content = _read_media_file("_mdict_main.js")
+    assert "getInitLanguages" in content
+    assert "dictionaryIds" in content
+    assert "mdict-field" in content

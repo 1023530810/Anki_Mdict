@@ -39,6 +39,40 @@
     document.dispatchEvent(new CustomEvent(name, { detail: detail }));
   }
 
+  function getFieldLanguages(fields) {
+    var languageMap = {};
+    if (!fields || !fields.length) {
+      return [];
+    }
+    fields.forEach(function (field) {
+      if (!field || !field.name || !field.language) {
+        return;
+      }
+      var selector = ".mdict-field[data-mdict-field='" + field.name + "']";
+      if (document.querySelector(selector)) {
+        languageMap[field.language] = true;
+      }
+    });
+    return Object.keys(languageMap);
+  }
+
+  function getInitLanguages(config) {
+    var tokenizers = config.tokenizers || {};
+    var fieldLanguages = getFieldLanguages(window.MDICT_FIELDS || []);
+    var languages = [];
+    Object.keys(tokenizers).forEach(function (language) {
+      var tokenizer = tokenizers[language] || {};
+      if (!tokenizer.dictionaryIds || !tokenizer.dictionaryIds.length) {
+        return;
+      }
+      if (fieldLanguages.indexOf(language) === -1) {
+        return;
+      }
+      languages.push(language);
+    });
+    return languages;
+  }
+
   function init(options) {
     var opts = options || {};
     var configPath = opts.configPath || "_mdict_config.json";
@@ -70,9 +104,15 @@
 
   function initTokenizers(config) {
     var tokenizers = config.tokenizers || {};
+    var initLanguages = getInitLanguages(config);
     var tasks = [];
-    Object.keys(tokenizers).forEach(function (language) {
-      tasks.push(window.MD.Tokenizer.init(language));
+    if (window.MD.State) {
+      window.MD.State.initLanguages = initLanguages;
+    }
+    initLanguages.forEach(function (language) {
+      if (tokenizers[language]) {
+        tasks.push(window.MD.Tokenizer.init(language));
+      }
     });
     return Promise.all(tasks);
   }
@@ -80,8 +120,15 @@
   function tokenizeFields() {
     var fields = window.MDICT_FIELDS || [];
     var promises = [];
+    var initLanguages = [];
+    if (window.MD.State && window.MD.State.initLanguages) {
+      initLanguages = window.MD.State.initLanguages;
+    }
     if (fields.length) {
       fields.forEach(function (field) {
+        if (initLanguages.length && initLanguages.indexOf(field.language) === -1) {
+          return;
+        }
         var selector = ".mdict-field[data-mdict-field='" + field.name + "']";
         var elements = document.querySelectorAll(selector);
         elements.forEach(function (element) {
@@ -91,7 +138,7 @@
     }
     if (!fields.length && window.MD.State && window.MD.State.targetContainer) {
       var container = document.querySelector(window.MD.State.targetContainer);
-      if (container) {
+      if (container && initLanguages.indexOf("ja") !== -1) {
         promises.push(window.MD.Tokenizer.tokenizeElement(container, "ja"));
       }
     }
