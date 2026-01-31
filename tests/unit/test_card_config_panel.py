@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -56,3 +57,8 @@ def test_main_init_gates_languages_by_fields_and_dicts() -> None:
     assert "getInitLanguages" in content
     assert "dictionaryIds" in content
     assert "mdict-field" in content
+
+
+def test_popup_passes_dictionary_id_for_css_fix() -> None:
+    content = _read_media_file("_mdict_main.js")
+    assert re.search(r"showPopup\(content,\s*\{[\s\S]*?dictionaryId", content)

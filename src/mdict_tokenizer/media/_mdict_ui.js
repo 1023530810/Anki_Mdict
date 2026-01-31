@@ -109,7 +109,8 @@
         content.innerHTML = "<div class=\"md-empty\">未找到释义</div>";
         return;
       }
-      content.innerHTML = "<div class=\"mdict-" + result.dictionaryId + "\">" + result.definition + "</div>";
+      var html = fixCssReferences(result.definition, result.dictionaryId);
+      content.innerHTML = "<div class=\"mdict-" + result.dictionaryId + "\">" + html + "</div>";
       window.MD.History.add({
         word: word,
         dictionaryId: result.dictionaryId,
@@ -120,6 +121,30 @@
         window.MD.emit("md:lookup", { word: word, result: result });
       }
     });
+  }
+
+  function fixCssReferences(html, dictionaryId) {
+    if (!html || !dictionaryId) return html || "";
+    var config = window.MD && window.MD.State ? window.MD.State.config : null;
+    if (!config || !config.dictionaries) return html;
+    var dict = null;
+    for (var i = 0; i < config.dictionaries.length; i++) {
+      if (config.dictionaries[i].id === dictionaryId) {
+        dict = config.dictionaries[i];
+        break;
+      }
+    }
+    if (!dict || !dict.resources || !dict.resources.cssFile) return html;
+    var actualCss = dict.resources.cssFile;
+    // 替换 <link href="xxx.css">
+    html = html.replace(/<link[^>]+href=["']([^"']+\.css)["'][^>]*>/gi, function(match, cssPath) {
+      return match.replace(cssPath, actualCss);
+    });
+    // 替换 @import url("xxx.css")
+    html = html.replace(/@import\s+url\(["']?([^"')]+\.css)["']?\)/gi, function(match, cssPath) {
+      return match.replace(cssPath, actualCss);
+    });
+    return html;
   }
 
   function showPopup(content, options) {
@@ -133,7 +158,9 @@
     popup.className = "md-popup";
     popup.classList.add("md-popup-" + height);
     titleEl.textContent = (options && options.title) || "辞典";
-    contentEl.innerHTML = content;
+    // 修复 CSS 引用
+    var dictionaryId = options && options.dictionaryId;
+    contentEl.innerHTML = fixCssReferences(content, dictionaryId);
     updateDictOptions(dictSwitch);
     popup.classList.remove("md-popup-hidden");
   }

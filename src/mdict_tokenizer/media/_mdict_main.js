@@ -168,6 +168,7 @@
       window.MD.UI.showPopup(content, {
         title: result.dictionaryName || word,
         showDictSwitch: true,
+        dictionaryId: result.dictionaryId,
       });
       emit("md:lookup", { word: word, result: result });
     });
