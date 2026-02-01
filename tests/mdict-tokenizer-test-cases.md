@@ -318,6 +318,30 @@
   - 弹窗显示“未找到释义”
 - **Postconditions**: 无
 
+#### TC-E-003: 纯标点/符号/emoji 不生成可点击词元
+- **Requirement**: 边界情况
+- **Priority**: Medium
+- **Preconditions**:
+  - 已注入分词功能
+  - 浏览器可打开本仓库的静态页面
+- **Test Steps**:
+  1. 在仓库根目录启动静态服务器：`python -m http.server 8000`
+  2. 打开自动化自测页面：`http://localhost:8000/Anki_Mdict/tests/web/test_mdict_punct_filter.html`
+  3. 在页面/卡片中输入或渲染以下示例文本（混合 CN/JA/EN）：
+     - `今天はTokyoに行く。I can't believe it! (mother-in-law) — テスト… 😀`
+  4. 观察纯标点/符号/emoji 的展示：`。 , ( ) ! — … 😀`
+  5. 用开发者工具检查 DOM：
+     - 纯标点/符号/emoji 不应被包裹为 `.md-token`
+     - 含字母/数字的 token 应被包裹为 `.md-token`（可点击查词）
+     - 不对 `'` 与 `-` 的归属做强断言：
+       - `can't` 可能是单个 token，也可能被拆分为多个 token
+       - `mother-in-law` 可能是单个 token，也可能被拆分为多个 token（如 `mother-`、`in-`、`law`）
+       - 上述拆分/包含均可接受，只要“含字母/数字的 token”仍为可点击 `.md-token`
+- **Expected Results**:
+  - 纯标点/符号/emoji 仍然可见，但不是可点击词元（不包 `.md-token`）
+  - 含字母/数字的 token 仍为可点击词元（包 `.md-token`），允许在 `'` 与 `-` 附近拆分或将符号附着到词元上
+- **Postconditions**: 无
+
 ### 3. Error Handling Tests
 
 #### TC-ERR-001: MDX 文件损坏或编码不支持

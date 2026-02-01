@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mdict Punctuation Filter - Self-Test</title>
+  <base href="../../src/mdict_tokenizer/media/">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .test-section {
+      margin: 30px 0;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #f9f9f9;
+    }
+    .test-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #333;
+    }
+    .test-container {
+      padding: 15px;
+      background: #fff;
+      border-radius: 4px;
+      min-height: 50px;
+    }
+    .md-token {
+      background: #e3f2fd;
+      color: #1565c0;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 3px;
+      margin: 0 2px;
+    }
+    #mdict-test-result {
+      margin-top: 30px;
+      padding: 20px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 20px;
+      text-align: center;
+    }
+    #mdict-test-result.pass {
+      background: #c8e6c9;
+      color: #2e7d32;
+    }
+    #mdict-test-result.fail {
+      background: #ffcdd2;
+      color: #c62828;
+    }
+    .result-details {
+      margin-top: 15px;
+      padding: 15px;
+      background: #fff3e0;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    .error-list {
+      margin-top: 10px;
+      color: #c62828;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 Mdict Punctuation Filter - Self-Test</h1>
+  <p>Tests that tokenizer filters out punctuation, symbols, and emojis correctly.</p>
+
+  <!-- 日语测试 -->
+  <div class="test-section">
+    <div class="test-title">🇯🇵 Japanese Test (language="ja")</div>
+    <div id="ja-test-container" class="test-container">
+      今日は天気がいいです。
+      こんにちは！世界。
+      ... — … 「」『』
+      😊🎌🇯🇵
+    </div>
+  </div>
+
+  <!-- 英语测试 -->
+  <div class="test-section">
+    <div class="test-title">🇬🇧 English Test (language="en")</div>
+    <div id="en-test-container" class="test-container">
+      Hello, world! This is a test.
+      Don't worry—it's fine.
+      mother-in-law can't believe it.
+      ... — … !@#$%
+      😀🎉🇺🇸
+    </div>
+  </div>
+
+  <!-- 混合测试 -->
+  <div class="test-section">
+    <div class="test-title">🌏 Mixed Content Test (language="ja")</div>
+    <div id="mixed-test-container" class="test-container">
+      中文English日本語English
+      今日はMondayです。
+      ！？… — 😀🎉
+      can't don't won't
+    </div>
+  </div>
+
+  <div id="mdict-test-result">Loading...</div>
+  <div id="mdict-test-detail" class="result-details"></div>
+
+  <script src="_mdict_config.js"></script>
+  <script src="_mdict_tokenizer.js"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      // 记录 token 点击回调
+      var clickCount = 0;
+      var clickedTokens = [];
+
+      window.MD.handleTokenClick = function (token, span) {
+        clickCount++;
+        clickedTokens.push({
+          surface: token.surface,
+          lemma: token.lemma,
+          pos: token.pos,
+          timestamp: Date.now()
+        });
+        console.log("[Token Click #" + clickCount + "]", token);
+      };
+
+      // Feature-detect Unicode 属性支持并构建相应的正则表达式
+      function hasUnicodePropsSupport() {
+        var hasSupport = false;
+        try {
+          new RegExp("\\p{L}", "u");
+          hasSupport = true;
+        } catch (e) {
+          hasSupport = false;
+        }
+        return hasSupport;
+      }
+
+      // 构建纯符号检测模式（运行时）
+      function buildPureSymbolPattern() {
+        if (hasUnicodePropsSupport()) {
+          return new RegExp("^[^\\p{L}\\p{N}]+$", "u");
+        } else {
+          return /^[^a-zA-Z\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF0-9]+$/;
+        }
+      }
+
+      // 运行时构建测试模式（避免解析时字面量）
+      var pureSymbolPattern = buildPureSymbolPattern();
+
+      // 测试数据定义
+      var tests = [
+        {
+          id: "ja",
+          containerId: "ja-test-container",
+          language: "ja",
+          expectedTokens: [
+            "今日", "は", "天気", "が", "いい", "です", "こんにちは", "世界"
+          ],
+          unexpectedPatterns: [
+            /^[。！？\.\?!—…「」『』]+$/,
+            pureSymbolPattern
+          ]
+        },
+        {
+          id: "en",
+          containerId: "en-test-container",
+          language: "en",
+          expectedTokens: [
+            "Hello", "world", "This", "is", "a", "test",
+            "Don", "t", "worry", "it", "s", "fine",
+            "mother", "in", "law", "can", "t", "believe", "it"
+          ],
+          unexpectedPatterns: [
+            /^[,.\?!—…!@#$%]+$/,
+            pureSymbolPattern
+          ]
+        },
+        {
+          id: "mixed",
+          containerId: "mixed-test-container",
+          language: "ja",
+          expectedTokens: [
+            "中", "文", "English", "日本語", "English", "今日", "は", "Monday", "です",
+            "can", "t", "don", "t", "won", "t"
+          ],
+          unexpectedPatterns: [
+            /^[！？…—]+$/,
+            pureSymbolPattern
+          ]
+        }
+      ];
+
+      // 运行所有测试
+      function runTests() {
+        var allPassed = true;
+        var errorMessages = [];
+
+        var tokenizationPromises = tests.map(function (test) {
+          var container = document.getElementById(test.containerId);
+          if (!container) {
+            allPassed = false;
+            errorMessages.push("❌ Test '" + test.id + "': Container not found");
+            return Promise.resolve();
+          }
+
+          return MD.Tokenizer.tokenizeElement(container, test.language).then(function () {
+            console.log("✅ Tokenized:", test.id);
+
+            // 收集所有 .md-token 元素
+            var tokenElements = container.querySelectorAll(".md-token");
+            var actualTokens = Array.from(tokenElements).map(function (span) {
+              return span.getAttribute("data-surface") || span.textContent;
+            });
+
+            console.log("📝 Tokens found for " + test.id + ":", actualTokens);
+
+            // 检查期望的 token 是否存在
+            var missingTokens = test.expectedTokens.filter(function (expected) {
+              return !actualTokens.some(function (actual) {
+                return actual.includes(expected);
+              });
+            });
+
+            if (missingTokens.length > 0) {
+              allPassed = false;
+              errorMessages.push(
+                "❌ Test '" + test.id + "': Missing expected tokens: " +
+                missingTokens.join(", ")
+              );
+            }
+
+            // 检查是否有意外的纯标点/符号/emoji token
+            var unexpectedTokens = actualTokens.filter(function (token) {
+              return test.unexpectedPatterns.some(function (pattern) {
+                return pattern.test(token);
+              });
+            });
+
+            if (unexpectedTokens.length > 0) {
+              allPassed = false;
+              errorMessages.push(
+                "❌ Test '" + test.id + "': Found unexpected tokens (should be filtered): " +
+                unexpectedTokens.join(", ")
+              );
+            }
+
+            // 成功日志
+            if (missingTokens.length === 0 && unexpectedTokens.length === 0) {
+              console.log("✅ Test '" + test.id + "' passed!");
+            }
+          }).catch(function (error) {
+            allPassed = false;
+            errorMessages.push(
+              "❌ Test '" + test.id + "': Tokenization failed - " + error.message
+            );
+            console.error(error);
+          });
+        });
+
+        // 使用 Promise.all 等待所有 tokenization 完成
+        return Promise.all(tokenizationPromises).then(function () {
+          var resultEl = document.getElementById("mdict-test-result");
+          var detailsEl = document.getElementById("mdict-test-detail");
+
+          if (allPassed && errorMessages.length === 0) {
+            resultEl.textContent = "✅ PASS - All tests passed!";
+            resultEl.className = "pass";
+            detailsEl.innerHTML =
+              "<strong>Summary:</strong><br>" +
+              "• All expected tokens found<br>" +
+              "• No punctuation/symbol/emoji tokens present<br>" +
+              "• Total token clicks recorded: " + clickCount;
+            console.log("✅ ALL TESTS PASSED");
+          } else {
+            resultEl.textContent = "❌ FAIL - Some tests failed";
+            resultEl.className = "fail";
+            detailsEl.innerHTML =
+              "<strong>Errors:</strong>" +
+              '<div class="error-list">' +
+              errorMessages.join("<br>") +
+              "</div>" +
+              "<br><strong>Details:</strong><br>" +
+              "• Token clicks recorded: " + clickCount +
+              "<br>• See console for full details";
+            console.error("❌ TESTS FAILED:", errorMessages);
+          }
+        });
+      }
+
+      // 页面加载完成后运行测试
+      window.addEventListener("load", function () {
+        console.log("🚀 Starting mdict punct filter self-test...");
+        console.log("🔍 Unicode props support:", hasUnicodePropsSupport());
+        runTests().catch(function (error) {
+          console.error("❌ Test execution failed:", error);
+          var resultEl = document.getElementById("mdict-test-result");
+          resultEl.textContent = "❌ ERROR - " + error.message;
+          resultEl.className = "fail";
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
