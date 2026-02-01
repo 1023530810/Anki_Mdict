@@ -148,30 +148,16 @@
   function handleTokenClick(token, element) {
     var config = window.MD.Config ? window.MD.Config.getAll() : { extractLemma: true };
     var word = config.extractLemma ? token.lemma || token.surface : token.surface;
-    window.MD.Dictionary.lookup(word).then(function (result) {
-      if (!result.found) {
-        window.MD.UI.showPopup("<div class=\"md-empty\">未找到释义</div>", {
-          title: word,
-        });
-        return;
+    var prefixHtml = "";
+    if (config.readingMode === "lookup") {
+      if (token.reading) {
+        prefixHtml += "<div class=\"md-token-reading\">" + token.reading + "</div>";
       }
-      var readingInfo = "";
-      if (config.readingMode === "lookup") {
-        if (token.reading) {
-          readingInfo += "<div class=\"md-token-reading\">" + token.reading + "</div>";
-        }
-        if (token.ipa) {
-          readingInfo += "<div class=\"md-token-ipa\">" + token.ipa + "</div>";
-        }
+      if (token.ipa) {
+        prefixHtml += "<div class=\"md-token-ipa\">" + token.ipa + "</div>";
       }
-      var content = readingInfo ? readingInfo + result.definition : result.definition;
-      window.MD.UI.showPopup(content, {
-        title: result.dictionaryName || word,
-        showDictSwitch: true,
-        dictionaryId: result.dictionaryId,
-      });
-      emit("md:lookup", { word: word, result: result });
-    });
+    }
+    window.MD.UI.lookupFromToken(word, null, prefixHtml);
   }
 
   window.MD.init = init;

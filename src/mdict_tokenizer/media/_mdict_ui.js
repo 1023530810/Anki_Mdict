@@ -58,7 +58,7 @@
       if (!term) {
         return;
       }
-      lookupAndRender(term, null);
+      lookupAndRender(term, null, null);
     });
     controls.appendChild(input);
     controls.appendChild(searchBtn);
@@ -70,7 +70,7 @@
       if (!term) {
         return;
       }
-      lookupAndRender(term, dictSwitch.value || null);
+      lookupAndRender(term, dictSwitch.value || null, null);
     });
     controls.appendChild(dictSwitch);
 
@@ -100,17 +100,25 @@
     });
   }
 
-  function lookupAndRender(word, dictionaryId) {
+  function lookupAndRender(word, dictionaryId, prefixHtml) {
     var popup = ensurePopup();
     var content = popup.querySelector(".md-popup-content");
+    var titleEl = popup.querySelector(".md-popup-title");
     content.innerHTML = "<div class=\"md-loading\">加载中...</div>";
     window.MD.Dictionary.lookup(word, dictionaryId).then(function (result) {
       if (!result.found) {
         content.innerHTML = "<div class=\"md-empty\">未找到释义</div>";
+        if (titleEl) {
+          titleEl.textContent = word;
+        }
         return;
       }
       var html = fixCssReferences(result.definition, result.dictionaryId);
-      content.innerHTML = "<div class=\"mdict-" + result.dictionaryId + "\">" + html + "</div>";
+      var fullHtml = prefixHtml ? prefixHtml + html : html;
+      content.innerHTML = "<div class=\"mdict-" + result.dictionaryId + "\">" + fullHtml + "</div>";
+      if (titleEl) {
+        titleEl.textContent = result.dictionaryName || word;
+      }
       window.MD.History.add({
         word: word,
         dictionaryId: result.dictionaryId,
@@ -379,11 +387,22 @@
     panel.innerHTML = html;
   }
 
+  function lookupFromToken(word, dictionaryId, prefixHtml) {
+    var popup = showPopup("<div class=\"md-loading\">加载中...</div>", { title: word });
+    var input = popup.querySelector(".md-popup-input");
+    if (input) {
+      input.value = word;
+      input.focus();
+    }
+    lookupAndRender(word, dictionaryId, prefixHtml);
+  }
+
   window.MD.UI = {
     showPopup: showPopup,
     hidePopup: hidePopup,
     showConfig: showConfig,
     showHistory: showHistory,
+    lookupFromToken: lookupFromToken,
   };
 
   window.MD.History = {
