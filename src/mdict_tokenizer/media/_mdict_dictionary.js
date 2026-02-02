@@ -61,22 +61,48 @@
     });
   }
 
-  function lookupInDictionary(dictionaryId, word) {
+  function lookupInDictionary(dictionaryId, word, options) {
+    var entry, shardEntry, result, trimmedDef, linkMatch, target;
+    options = options || {};
+    var followed = options.followed || false;
     return loadIndex(dictionaryId).then(function (indexData) {
-      var entry = indexData.entries ? indexData.entries[word] : null;
+      entry = indexData.entries ? indexData.entries[word] : null;
       if (!entry) {
         return { found: false };
       }
       return loadShard(dictionaryId, entry.shardIndex).then(function (shardData) {
-        var shardEntry = shardData.entries[entry.position];
+        shardEntry = shardData.entries[entry.position];
         if (!shardEntry) {
           return { found: false };
         }
-        return {
+        result = {
           found: true,
           definition: shardEntry.definition,
           dictionaryId: dictionaryId,
         };
+        if (!followed && result.definition) {
+          trimmedDef = result.definition.trim();
+          linkMatch = trimmedDef.match(/^@@@LINK=(.+)$/);
+          if (linkMatch) {
+            target = linkMatch[1].trim();
+            return lookupInDictionary(dictionaryId, target, { followed: true })
+              .then(function (targetResult) {
+                if (targetResult.found) {
+                  return {
+                    found: true,
+                    definition: targetResult.definition,
+                    dictionaryId: dictionaryId,
+                  };
+                } else {
+                  return result;
+                }
+              })
+              .catch(function () {
+                return result;
+              });
+          }
+        }
+        return result;
       });
     });
   }
