@@ -171,6 +171,7 @@
     contentEl.innerHTML = fixCssReferences(content, dictionaryId);
     updateDictOptions(dictSwitch);
     popup.classList.remove("md-popup-hidden");
+    return popup;
   }
 
   function hidePopup() {
