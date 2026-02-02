@@ -236,6 +236,18 @@
     }
   }
 
+  function tokenHasWordChars(surface) {
+    if (!surface) {
+      return false;
+    }
+    try {
+      new RegExp("\\p{L}", "u");
+      return /[\p{L}\p{N}]/u.test(surface);
+    } catch (e) {
+      return /[a-zA-Z0-9\u00C0-\u017F\u0400-\u04FF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF]/.test(surface);
+    }
+  }
+
   function buildTokenSpan(token, config) {
     var span = document.createElement("span");
     applyTokenStyle(span, config);
@@ -331,7 +343,11 @@
         return tokenizePromise(text).then(function (tokens) {
           var fragment = document.createDocumentFragment();
           tokens.forEach(function (token) {
-            fragment.appendChild(buildTokenSpan(token, config));
+            if (tokenHasWordChars(token.surface)) {
+              fragment.appendChild(buildTokenSpan(token, config));
+            } else {
+              fragment.appendChild(document.createTextNode(token.surface || ""));
+            }
           });
           node.parentNode.replaceChild(fragment, node);
         });
