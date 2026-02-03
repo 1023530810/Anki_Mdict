@@ -121,6 +121,7 @@
     var fields = window.MDICT_FIELDS || [];
     var promises = [];
     var initLanguages = [];
+    var container = null;
     if (window.MD.State && window.MD.State.initLanguages) {
       initLanguages = window.MD.State.initLanguages;
     }
@@ -137,7 +138,7 @@
       });
     }
     if (!fields.length && window.MD.State && window.MD.State.targetContainer) {
-      var container = document.querySelector(window.MD.State.targetContainer);
+      container = document.querySelector(window.MD.State.targetContainer);
       if (container && initLanguages.indexOf("ja") !== -1) {
         promises.push(window.MD.Tokenizer.tokenizeElement(container, "ja"));
       }
@@ -149,6 +150,14 @@
     var config = window.MD.Config ? window.MD.Config.getAll() : { extractLemma: true };
     var word = config.extractLemma ? token.lemma || token.surface : token.surface;
     var prefixHtml = "";
+    var language = null;
+    var fieldEl = null;
+    if (element && element.closest) {
+      fieldEl = element.closest(".mdict-field");
+    }
+    if (fieldEl) {
+      language = fieldEl.getAttribute("data-mdict-lang") || null;
+    }
     if (config.readingMode === "lookup") {
       if (token.reading) {
         prefixHtml += "<div class=\"md-token-reading\">" + token.reading + "</div>";
@@ -157,7 +166,7 @@
         prefixHtml += "<div class=\"md-token-ipa\">" + token.ipa + "</div>";
       }
     }
-    window.MD.UI.lookupFromToken(word, null, prefixHtml);
+    window.MD.UI.lookupFromToken(word, null, prefixHtml, language);
   }
 
   window.MD.init = init;

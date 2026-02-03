@@ -8,16 +8,24 @@ import importlib.util
 import sys
 from dataclasses import replace
 from pathlib import Path
+from typing import Any, Iterable, Protocol
 
 from .config import (
     Dictionary,
     DictionaryMeta,
     DictionaryResources,
-    MainConfig,
     load_config,
     save_config,
 )
 from .mdx_processor import decode_bytes, process_mdx
+
+
+class MDDLike(Protocol):
+    """MDD 读取接口"""
+
+    def __init__(self, path: str) -> None: ...
+
+    def items(self) -> Iterable[tuple[object, bytes]]: ...
 
 
 class DictionaryManager:
@@ -42,7 +50,7 @@ class DictionaryManager:
             raise RuntimeError("辞典已存在")
 
         copied_mdx = self.media_dir / f"{file_prefix}.mdx"
-        copied_mdx.write_bytes(mdx_path.read_bytes())
+        _ = copied_mdx.write_bytes(mdx_path.read_bytes())
 
         dictionary = Dictionary(
             id=dict_id,
@@ -76,7 +84,7 @@ class DictionaryManager:
         """添加 MDD 资源"""
         mapping, total = extract_mdd_resources(dict_id, mdd_paths, self.media_dir)
         resource_file = self.media_dir / f"_mdict_{dict_id}_resources.json"
-        resource_file.write_text(
+        _ = resource_file.write_text(
             json_dumps(mapping),
             encoding="utf-8",
         )
@@ -101,7 +109,7 @@ class DictionaryManager:
         css_text = css_path.read_text(encoding="utf-8")
         scoped = scope_css(css_text, dict_id)
         output_path = self.media_dir / f"_mdict_{dict_id}_style.css"
-        output_path.write_text(scoped, encoding="utf-8")
+        _ = output_path.write_text(scoped, encoding="utf-8")
 
         config = load_config(self.media_dir)
         for index, dictionary in enumerate(config.dictionaries):
@@ -118,6 +126,16 @@ class DictionaryManager:
             break
         save_config(self.media_dir, config)
 
+    def rename_dictionary(self, dict_id: str, new_name: str) -> None:
+        """重命名辞典（仅更新配置名称）"""
+        config = load_config(self.media_dir)
+        for index, dictionary in enumerate(config.dictionaries):
+            if dictionary.id != dict_id:
+                continue
+            config.dictionaries[index] = replace(dictionary, name=new_name)
+            break
+        save_config(self.media_dir, config)
+
     def delete_dictionary(self, dict_id: str) -> None:
         """删除辞典和关联资源"""
         file_prefix = f"_mdict_{dict_id}"
@@ -126,6 +144,16 @@ class DictionaryManager:
 
         config = load_config(self.media_dir)
         config.dictionaries = [d for d in config.dictionaries if d.id != dict_id]
+        updated_tokenizers = {}
+        for language, tokenizer in config.tokenizers.items():
+            filtered_ids = [
+                item for item in tokenizer.dictionary_ids if item != dict_id
+            ]
+            updated_tokenizers[language] = replace(
+                tokenizer,
+                dictionary_ids=filtered_ids,
+            )
+        config.tokenizers = updated_tokenizers
         save_config(self.media_dir, config)
 
     def delete_mdd(self, dict_id: str) -> None:
@@ -174,7 +202,7 @@ class DictionaryManager:
         """调整辞典顺序"""
         config = load_config(self.media_dir)
         order_map = {dict_id: index for index, dict_id in enumerate(ordered_ids)}
-        updated = []
+        updated: list[Dictionary] = []
         for dictionary in config.dictionaries:
             order = order_map.get(dictionary.id, dictionary.order)
             updated.append(replace(dictionary, order=order))
@@ -192,7 +220,7 @@ def json_dumps(payload: dict[str, object] | dict[str, str]) -> str:
 def scope_css(css_text: str, dict_id: str) -> str:
     """为 CSS 添加作用域"""
     prefix = f".mdict-{dict_id}"
-    scoped_rules = []
+    scoped_rules: list[str] = []
     for chunk in css_text.split("}"):
         if "{" not in chunk:
             continue
@@ -216,7 +244,7 @@ def extract_mdd_resources(
     media_dir: Path,
 ) -> tuple[dict[str, str], int]:
     """提取 MDD 资源"""
-    mdd_class = _load_mdd_class()
+    mdd_class: Any = _load_mdd_class()
     if mdd_class is None:
         raise RuntimeError("无法加载 MDD 解析器")
 
@@ -233,13 +261,13 @@ def extract_mdd_resources(
             extension = Path(key_str).suffix
             hashed = hashlib.md5(key_str.encode("utf-8")).hexdigest()[:8]
             filename = f"_mdict_{dict_id}_res_{hashed}{extension}"
-            (media_dir / filename).write_bytes(data)
+            _ = (media_dir / filename).write_bytes(data)
             mapping[key_str] = filename
             total += 1
     return mapping, total
 
 
-def _load_mdd_class():
+def _load_mdd_class() -> Any | None:
     """加载 MDD 解析器"""
     try:
         mdict_query = importlib.import_module("mdict_query")

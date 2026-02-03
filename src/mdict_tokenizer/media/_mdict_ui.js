@@ -157,12 +157,35 @@
     });
   }
 
-  function lookupAndRender(word, dictionaryId, prefixHtml) {
+  function getLastLookupLanguage() {
+    return window.MD && window.MD.State ? window.MD.State.lastLookupLanguage : null;
+  }
+
+  function setLastLookupLanguage(language) {
+    if (!language) {
+      return;
+    }
+    if (!window.MD.State) {
+      window.MD.State = {};
+    }
+    window.MD.State.lastLookupLanguage = language;
+  }
+
+  function lookupAndRender(word, dictionaryId, prefixHtml, options) {
     var popup = ensurePopup();
     var content = popup.querySelector(".md-popup-content");
     var titleEl = popup.querySelector(".md-popup-title");
+    var lastLanguage = null;
     content.innerHTML = "<div class=\"md-loading\">加载中...</div>";
-    window.MD.Dictionary.lookup(word, dictionaryId).then(function (result) {
+    var lookupOptions = options || {};
+    if (!lookupOptions.language) {
+      lastLanguage = getLastLookupLanguage();
+      if (lastLanguage) {
+        lookupOptions.language = lastLanguage;
+      }
+    }
+    setLastLookupLanguage(lookupOptions.language);
+    window.MD.Dictionary.lookup(word, dictionaryId, lookupOptions).then(function (result) {
       if (!result.found) {
         content.innerHTML = "<div class=\"md-empty\">未找到释义</div>";
         if (titleEl) {
@@ -446,14 +469,15 @@
     panel.innerHTML = html;
   }
 
-  function lookupFromToken(word, dictionaryId, prefixHtml) {
+  function lookupFromToken(word, dictionaryId, prefixHtml, language) {
     var popup = showPopup("<div class=\"md-loading\">加载中...</div>", { title: word });
     var input = popup.querySelector(".md-popup-input");
     if (input) {
       input.value = word;
       input.focus();
     }
-    lookupAndRender(word, dictionaryId, prefixHtml);
+    setLastLookupLanguage(language);
+    lookupAndRender(word, dictionaryId, prefixHtml, { language: language });
   }
 
   window.MD.UI = {

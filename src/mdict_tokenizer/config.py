@@ -281,3 +281,82 @@ def _from_dict(raw: dict[str, object]) -> MainConfig:
     config.injections = injections
 
     return config
+
+
+def collect_languages(
+    dictionaries: list[Dictionary],
+    tokenizers: dict[str, TokenizerConfig],
+) -> set[str]:
+    """收集所有语言（辞典语言 + 分词器语言）"""
+    languages: set[str] = set(tokenizers.keys())
+    for dictionary in dictionaries:
+        languages.update(dictionary.languages)
+    return languages
+
+
+def ensure_tokenizer_dictionary_ids(
+    dictionaries: list[Dictionary],
+    tokenizers: dict[str, TokenizerConfig],
+) -> dict[str, TokenizerConfig]:
+    """确保分词器配置包含有效的辞典 ID 列表
+
+    返回修改后的 tokenizers，保留其他字段（extract_lemma、show_reading、show_ipa）。
+    对于缺失或空的 dictionary_ids，使用默认值（按 Dictionary.order 排序）。
+    """
+    languages: set[str] = set(tokenizers.keys())
+    for dictionary in dictionaries:
+        languages.update(dictionary.languages)
+
+    updated: dict[str, TokenizerConfig] = {}
+
+    for language in languages:
+        tokenizer = tokenizers.get(language)
+        ordered = sorted(dictionaries, key=lambda item: item.order)
+        default_ids = [
+            dictionary.id for dictionary in ordered if language in dictionary.languages
+        ]
+
+        if tokenizer is None:
+            # 创建新的分词器配置
+            updated[language] = TokenizerConfig(
+                language=language, dictionary_ids=default_ids
+            )
+        elif not tokenizer.dictionary_ids:
+            # 填充空列表，保留其他字段
+            updated[language] = TokenizerConfig(
+                language=tokenizer.language,
+                extract_lemma=tokenizer.extract_lemma,
+                show_reading=tokenizer.show_reading,
+                show_ipa=tokenizer.show_ipa,
+                dictionary_ids=default_ids,
+            )
+        else:
+            # 仅当默认列表非空时验证并过滤现有 dictionary_ids
+            # 对于不在 dictionaries 中的语言，保留用户手动设置的值
+            if default_ids:
+                valid_set = set(default_ids)
+                filtered = [
+                    dict_id
+                    for dict_id in tokenizer.dictionary_ids
+                    if dict_id in valid_set
+                ]
+                updated[language] = TokenizerConfig(
+                    language=tokenizer.language,
+                    extract_lemma=tokenizer.extract_lemma,
+                    show_reading=tokenizer.show_reading,
+                    show_ipa=tokenizer.show_ipa,
+                    dictionary_ids=filtered,
+                )
+            else:
+                updated[language] = tokenizer
+
+    return updated
+
+
+def resolve_language_tokenizers(config: MainConfig) -> dict[str, TokenizerConfig]:
+    """从主配置解析并补充分词器配置
+
+    对于 dictionaries 中存在但 tokenizers 中缺失的语言，自动创建默认配置。
+    返回的 tokenizers 包含所有语言的有效配置。
+    """
+    return ensure_tokenizer_dictionary_ids(config.dictionaries, config.tokenizers)

@@ -107,22 +107,89 @@
     });
   }
 
+  function normalizeLookupArgs(dictionaryId, options) {
+    var normalizedDictionaryId = dictionaryId;
+    var normalizedOptions = options;
+    if (dictionaryId && typeof dictionaryId === "object") {
+      normalizedOptions = dictionaryId;
+      normalizedDictionaryId = null;
+    }
+    return {
+      dictionaryId: normalizedDictionaryId,
+      options: normalizedOptions || {},
+    };
+  }
+
+  function getDictionaryById(dictionaries, dictionaryId) {
+    var i = 0;
+    if (!dictionaryId) {
+      return null;
+    }
+    for (i = 0; i < dictionaries.length; i++) {
+      if (dictionaries[i].id === dictionaryId) {
+        return dictionaries[i];
+      }
+    }
+    return null;
+  }
+
+  function supportsLanguage(dict, language) {
+    if (!language) {
+      return true;
+    }
+    if (!dict) {
+      return false;
+    }
+    if (dict.language) {
+      return dict.language === language;
+    }
+    if (dict.languages && dict.languages.length) {
+      return dict.languages.indexOf(language) !== -1;
+    }
+    return false;
+  }
+
+  function getCandidatesByLanguage(config, language) {
+    var dictionaries = config.dictionaries || [];
+    var tokenizers = config.tokenizers || {};
+    var ordered = dictionaries.slice().sort(function (a, b) {
+      return a.order - b.order;
+    });
+    if (!language) {
+      return ordered;
+    }
+    if (tokenizers[language] && tokenizers[language].dictionaryIds && tokenizers[language].dictionaryIds.length) {
+      return tokenizers[language].dictionaryIds
+        .map(function (dictId) {
+          return getDictionaryById(dictionaries, dictId);
+        })
+        .filter(function (dict) {
+          return !!dict;
+        });
+    }
+    return ordered.filter(function (dict) {
+      return supportsLanguage(dict, language);
+    });
+  }
+
   window.MD.Dictionary = {
-    lookup: function (word, dictionaryId) {
+    lookup: function (word, dictionaryId, options) {
+      var normalized = normalizeLookupArgs(dictionaryId, options);
+      var language = normalized.options ? normalized.options.language : null;
       var config = window.MD && window.MD.State ? window.MD.State.config : null;
       if (!config) {
         return Promise.resolve({ found: false });
       }
       var dictionaries = config.dictionaries || [];
-      var ordered = dictionaries.slice().sort(function (a, b) {
-        return a.order - b.order;
-      });
-
-      var candidates = dictionaryId
-        ? ordered.filter(function (item) {
-            return item.id === dictionaryId;
+      var candidates = getCandidatesByLanguage(config, language);
+      var preferred = getDictionaryById(dictionaries, normalized.dictionaryId);
+      if (preferred) {
+        candidates = [preferred].concat(
+          candidates.filter(function (dict) {
+            return dict.id !== preferred.id;
           })
-        : ordered;
+        );
+      }
 
       var userConfig = window.MD && window.MD.Config ? window.MD.Config.getAll() : null;
       if (userConfig && userConfig.enabledDictionaries && userConfig.enabledDictionaries.length) {
@@ -137,7 +204,7 @@
           if (result.found) {
             return result;
           }
-          return lookupInDictionary(dict.id, word).then(function (res) {
+          return lookupInDictionary(dict.id, word, normalized.options).then(function (res) {
             if (res.found) {
               res.dictionaryName = dict.name;
             }

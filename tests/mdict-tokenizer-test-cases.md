@@ -4,7 +4,9 @@
 - **Feature**: 分词-辞典插件
 - **Requirements Source**: `specs/001-mdict-tokenizer-plugin/spec.md`
 - **Test Coverage**: 辞典管理、分词配置、模板注入、查词 UI、跨平台兼容、错误处理与性能目标
-- **Last Updated**: 2026-01-24
+- **Last Updated**: 2026-02-03
+- **Executor Note**: 2026-02-03（Codex）— 同步辞典管理：语言只读、按语言启用/排序/查词回归用例。
+- **Executor**: Codex
 
 ## Test Case Categories
 
@@ -17,25 +19,26 @@
   - 准备可用的 MDX 文件
   - Anki 媒体目录可写
 - **Test Steps**:
-  1. 在辞典管理界面导入 MDX
+  1. 在辞典管理界面导入 MDX（导入时选择辞典 `languages`）
   2. 等待后台预处理完成
   3. 检查媒体目录中的 `_mdict_{id}_shard_*.json` 与 `_mdict_{id}_index.json`
 - **Expected Results**:
   - 生成 JSON 分片与索引文件
-  - 配置文件记录辞典路径与语言
+  - 配置文件记录辞典路径与 `languages`
 - **Postconditions**: 新辞典可用于查词
 
-#### TC-F-002: 设置辞典语言标签
+#### TC-F-002: 辞典语言标签只读（导入时确定）
 - **Requirement**: FR-002
 - **Priority**: Medium
 - **Preconditions**:
   - 已导入辞典
 - **Test Steps**:
-  1. 在辞典管理中修改语言标签
-  2. 保存配置
+  1. 打开辞典管理，查看辞典的 `languages` 显示
+  2. 确认 `languages` 仅为只读展示（不应存在编辑入口，如编辑框/修改按钮/可保存的语言编辑对话框）
 - **Expected Results**:
-  - 语言标签被持久化保存
-- **Postconditions**: 分词系统可过滤匹配语言
+  - `languages` 为只读（导入时确定），UI 不提供编辑入口或编辑后不允许保存
+  - 配置与查词过滤以导入时的 `languages` 为准
+- **Postconditions**: 分词系统可按 `languages` 过滤匹配语言
 
 #### TC-F-003: 添加 MDD 媒体资源
 - **Requirement**: FR-003, FR-036
@@ -109,11 +112,214 @@
 - **Preconditions**:
   - 至少两个辞典
 - **Test Steps**:
-  1. 拖拽调整辞典顺序
-  2. 重启 Anki 或重新打开界面
+  1. 在辞典管理中选择目标语言（语言下拉框）
+  2. 在该语言下拖拽调整辞典顺序
+  3. 切换到另一种语言，观察该语言下的顺序（应保持独立）
+  4. 重启 Anki 或重新打开界面
 - **Expected Results**:
-  - 顺序持久化保存
-- **Postconditions**: 查词显示顺序更新
+  - 每种语言的顺序独立持久化（`tokenizers[lang].dictionaryIds`）
+  - 重新打开界面后，当前语言的顺序保持不变
+- **Postconditions**: 查词展示按当前查词语言的顺序更新
+
+#### TC-F-008C: 语言下拉框选项合集 + 按语言过滤辞典（手工回归）
+- **Requirement**: FR-002, FR-016, FR-017
+- **Priority**: High
+- **Preconditions**:
+  - 至少三本辞典：仅 `ja`、仅 `en`、`ja+en`（双语）
+- **Test Steps**:
+  1. 打开辞典管理，观察语言下拉框选项
+  2. 选择语言 `ja`，观察列表中显示的辞典集合
+  3. 选择语言 `en`，观察列表中显示的辞典集合
+  4. （可选）选择其他语言或空态，确认 UI 有明确提示
+- **Expected Results**:
+  - 语言下拉框至少包含：所有已导入辞典的 `languages` 并集（本例包含 `ja` 与 `en`）
+  - 选择 `ja` 时，列表仅显示 `languages` 含 `ja` 的辞典（含双语辞典）
+  - 选择 `en` 时，列表仅显示 `languages` 含 `en` 的辞典（含双语辞典）
+- **Postconditions**: 无
+
+#### TC-F-008D: 行内操作：重命名（仅名称）+ 删除辞典（手工回归）
+- **Requirement**: FR-007
+- **Priority**: High
+- **Preconditions**:
+  - 已导入辞典，且在辞典管理列表可见
+- **Test Steps**:
+  1. 在辞典管理中对某辞典执行“重命名”（仅修改显示名称）并保存
+  2. 观察该辞典的 `languages` 是否仍为只读展示且未变化
+  3. 关闭并重新打开辞典管理，确认名称持久化
+  4. 对该辞典执行“删除辞典”，确认弹窗并完成删除
+  5. 切换到该辞典所属的每种语言，确认列表均不再出现该辞典
+- **Expected Results**:
+  - 重命名仅影响显示名称；不影响辞典文件路径、`languages`、以及各语言的启用/排序逻辑
+  - 删除辞典后：辞典从所有语言列表移除；后续查词候选集不再包含该辞典
+- **Postconditions**: 无
+
+#### TC-F-008E: 行内操作：添加/删除 MDD 与 CSS（手工回归）
+- **Requirement**: FR-003, FR-004, FR-005, FR-006
+- **Priority**: High
+- **Preconditions**:
+  - 已导入辞典
+  - 准备对应 MDD 与 CSS 文件
+- **Test Steps**:
+  1. 在辞典管理中对某辞典执行“添加 MDD”并完成导入
+  2. 立即执行“删除 MDD”（不删除 MDX），然后再次打开含媒体资源的词条
+  3. 对同一辞典执行“添加 CSS”，确认样式生效
+  4. 执行“删除 CSS”（不删除 MDX/MDD），确认样式恢复默认
+- **Expected Results**:
+  - 添加/删除 MDD 与 CSS 为行内可用操作；行为与 TC-F-003~TC-F-006 一致
+  - 删除 MDD/CSS 不应影响辞典在各语言下的启用状态与排序
+- **Postconditions**: 无
+
+#### TC-F-008F: 快速试查（Quick Try Lookup）按当前语言生效（手工回归）
+- **Requirement**: FR-021, FR-022
+- **Priority**: High
+- **Preconditions**:
+  - 至少两本同语言辞典（A/B）且都有可命中词条
+  - 已在辞典管理为该语言配置启用/停用与顺序（`tokenizers[lang].dictionaryIds`）
+- **Test Steps**:
+  1. 在辞典管理选择语言 `ja`（或目标语言）
+  2. 使用“快速试查”输入一个可命中的词并执行查词
+  3. 调整该语言下辞典顺序（或启用/停用），再次用同一词进行快速试查
+- **Expected Results**:
+  - 快速试查使用“当前选择语言”的候选辞典集合与顺序
+  - 候选顺序与 `tokenizers[lang].dictionaryIds` 一致；停用的辞典不应出现在结果中
+- **Postconditions**: 无
+
+#### TC-F-008A: 按语言拖拽排序 + 保存当前语言顺序（手工回归）
+- **Requirement**: FR-008, FR-009
+- **Priority**: High
+- **Preconditions**:
+  - 至少三本辞典（其中两本同时支持同一语言）
+- **Test Steps**:
+  1. 选择语言 `ja`，把辞典顺序改为：A → B → C
+  2. 切换语言 `en`，把辞典顺序改为：C → A
+  3. 切回 `ja`，确认仍为 A → B → C
+  4. 重启 Anki 或刷新辞典管理界面，再分别检查 `ja/en` 的顺序
+- **Expected Results**:
+  - `ja` 与 `en` 的顺序互不影响，且都能持久化
+- **Postconditions**: 无
+
+#### TC-F-008B: 按语言启用/停用辞典影响查词候选集（手工回归）
+- **Requirement**: FR-016, FR-017, FR-021
+- **Priority**: High
+- **Preconditions**:
+  - 已注入分词功能
+  - 至少两本同语言辞典（A/B），且都有可命中的词条
+- **Test Steps**:
+  1. 在辞典管理选择语言 `ja`，仅启用辞典 A，停用辞典 B
+  2. 点击一个日语词元打开弹窗，观察候选辞典/Tab 列表
+  3. 回到辞典管理语言 `ja`，启用辞典 B 并拖拽到 A 前面
+  4. 再次点击同一词元打开弹窗，观察候选辞典与展示顺序
+- **Expected Results**:
+  - 弹窗候选辞典仅包含该语言已启用的辞典
+  - 展示顺序与 `tokenizers[lang].dictionaryIds` 一致（B 在 A 前）
+- **Postconditions**: 无
+
+#### TC-F-008C: 语言下拉聚合与切换过滤（手工回归）
+- **Requirement**: FR-016, FR-017
+- **Priority**: High
+- **Preconditions**:
+  - 已导入至少 3 本辞典，覆盖至少 2 种语言
+- **Test Steps**:
+  1. 打开辞典管理界面（Qt Dict Manager）
+  2. 展开语言下拉，确认语言列表为聚合结果（仅展示当前存在的语言）
+  3. 选择一种语言（如 `ja`），观察辞典列表
+  4. 切换到另一种语言（如 `en`），观察辞典列表
+- **Expected Results**:
+  - 语言下拉可用于在语言视图间切换
+  - 切换语言后，辞典列表按所选语言过滤展示
+- **Postconditions**: 无
+
+#### TC-F-008D: 行内操作：添加/删除 MDD（手工回归）
+- **Requirement**: FR-003, FR-005, FR-036
+- **Priority**: Medium
+- **Preconditions**:
+  - 已导入辞典
+  - 准备对应 MDD 文件
+- **Test Steps**:
+  1. 打开辞典管理界面（Qt Dict Manager）
+  2. 在目标辞典行内执行“添加 MDD”（或等价入口），选择 MDD 文件
+  3. 打开一个包含媒体资源的词条，确认资源可加载
+  4. 回到辞典管理界面，在同一辞典行内执行“删除 MDD”（或等价入口）
+  5. 再次打开相同词条
+- **Expected Results**:
+  - 添加后，媒体资源可显示/播放
+  - 删除后，MDD 资源不再可用（媒体不再显示/播放）
+- **Postconditions**: 无
+
+#### TC-F-008E: 行内操作：添加/删除 CSS（手工回归）
+- **Requirement**: FR-004, FR-006, FR-037
+- **Priority**: Medium
+- **Preconditions**:
+  - 已导入辞典
+  - 准备 CSS 文件
+- **Test Steps**:
+  1. 打开辞典管理界面（Qt Dict Manager）
+  2. 在目标辞典行内执行“添加 CSS”（或等价入口），选择 CSS 文件
+  3. 打开词条内容，观察样式渲染
+  4. 回到辞典管理界面，在同一辞典行内执行“删除 CSS”（或等价入口）
+  5. 再次打开相同词条
+- **Expected Results**:
+  - 添加后，CSS 生效且不影响其他辞典
+  - 删除后，样式恢复为无自定义 CSS 的效果
+- **Postconditions**: 无
+
+#### TC-F-008F: 行内操作：重命名辞典（手工回归）
+- **Requirement**: FR-002
+- **Priority**: Medium
+- **Preconditions**:
+  - 已导入辞典
+- **Test Steps**:
+  1. 打开辞典管理界面（Qt Dict Manager）
+  2. 在目标辞典行内执行“重命名”（或等价入口），输入新名称并确认
+  3. 关闭并重新打开辞典管理界面
+- **Expected Results**:
+  - 辞典显示名称更新并持久化
+  - 不影响辞典内容查询结果
+- **Postconditions**: 无
+
+#### TC-F-008G: 行内操作：删除辞典（手工回归）
+- **Requirement**: FR-007
+- **Priority**: High
+- **Preconditions**:
+  - 已导入辞典
+- **Test Steps**:
+  1. 打开辞典管理界面（Qt Dict Manager）
+  2. 在目标辞典行内执行“删除辞典”（或等价入口）
+  3. 如出现确认提示，确认删除
+  4. 在查词弹窗/手动搜索中搜索该辞典存在的词条
+- **Expected Results**:
+  - 辞典被删除并从列表中移除
+  - 查词不再命中已删除辞典
+- **Postconditions**: 无
+
+#### TC-F-008H: “快速试查”按当前语言启用+顺序命中（手工回归）
+- **Requirement**: FR-016, FR-017, FR-021
+- **Priority**: High
+- **Preconditions**:
+  - 当前语言视图下至少 2 本辞典（A/B），且存在一个“两个辞典都能命中但释义可区分”的查询词
+- **Test Steps**:
+  1. 在辞典管理选择语言 `ja`，确保 A/B 均为启用
+  2. 拖拽把 B 调整到 A 前面，并保存当前语言顺序
+  3. 使用 Qt Dict Manager 的“快速试查”输入该查询词，观察优先命中的辞典/展示顺序
+  4. 将 B 在该语言下切换为停用
+  5. 再次使用“快速试查”输入同一查询词
+- **Expected Results**:
+  - 两本都启用时，命中/展示优先级按当前语言顺序 `B → A` 生效
+  - 停用 B 后，快速试查不再命中 B，而是命中 A
+- **Postconditions**: 无
+
+#### TC-F-008I: 查词顺序按 `tokenizers[lang].dictionaryIds` 生效（手工回归）
+- **Requirement**: FR-008, FR-009
+- **Priority**: High
+- **Preconditions**:
+  - 已完成 `TC-F-008A` 或 `TC-F-008B`：当前语言顺序已调整并持久化
+  - 存在一个可在多本辞典都命中的查询词
+- **Test Steps**:
+  1. 在卡片上点击该语言词元打开查词弹窗
+  2. 观察候选辞典/Tab 列表的顺序与默认展示
+- **Expected Results**:
+  - 候选辞典顺序与 `tokenizers[lang].dictionaryIds` 一致
+- **Postconditions**: 无
 
 #### TC-F-009: 日语分词与原型提取
 - **Requirement**: FR-011, FR-013
@@ -177,6 +383,7 @@
 - **Expected Results**:
   - 日语配置只显示日语与双语辞典
   - 英语配置只显示英语与双语辞典
+  - 实际启用/顺序由辞典管理按语言维护，并持久化到 `tokenizers[lang].dictionaryIds`
 - **Postconditions**: 关联关系保存
 
 #### TC-F-014: 注入模板并分词渲染
@@ -202,6 +409,7 @@
 - **Expected Results**:
   - 弹窗出现
   - 切换后显示对应释义
+  - 弹窗默认候选辞典与顺序按“该次触发的语言”决定
 - **Postconditions**: 查词历史记录
 
 #### TC-F-016: 手动搜索与查词历史
@@ -216,6 +424,22 @@
   - 查询结果更新
   - 历史记录可回看且可保存 100 条
 - **Postconditions**: 历史数据存储
+
+#### TC-F-016A: 弹窗搜索框沿用最近一次触发语言（手工回归）
+- **Requirement**: FR-022
+- **Priority**: Medium
+- **Preconditions**:
+  - 已注入分词功能
+  - 同时存在 `ja` 与 `en` 的可查词元
+- **Test Steps**:
+  1. 先点击一个 `ja` 词元打开弹窗，然后关闭弹窗
+  2. 再点击一个 `en` 词元打开弹窗（不手动切换语言）
+  3. 在弹窗搜索框输入一个英文词并搜索
+  4. 再次点击一个 `ja` 词元打开弹窗，在弹窗搜索框输入一个日语词并搜索
+- **Expected Results**:
+  - 弹窗搜索使用最近一次触发语言（`lastLookupLanguage`）对应的辞典集合与顺序
+  - 第 3 步优先走 `en` 的候选辞典；第 4 步优先走 `ja` 的候选辞典
+- **Postconditions**: 无
 
 #### TC-F-017: 清除模板注入
 - **Requirement**: FR-025

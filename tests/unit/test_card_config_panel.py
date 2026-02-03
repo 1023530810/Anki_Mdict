@@ -60,5 +60,37 @@ def test_main_init_gates_languages_by_fields_and_dicts() -> None:
 
 
 def test_popup_passes_dictionary_id_for_css_fix() -> None:
-    content = _read_media_file("_mdict_main.js")
-    assert re.search(r"showPopup\(content,\s*\{[\s\S]*?dictionaryId", content)
+    content = _read_media_file("_mdict_ui.js")
+    assert re.search(r"showPopup\(content,\s*options\)", content)
+    assert re.search(r"dictionaryId\s*=\s*options.*options\.dictionaryId", content)
+    assert re.search(r"fixCssReferences\(content,\s*dictionaryId\)", content)
+
+
+def test_lookup_language_threads_through_flow() -> None:
+    dictionary_content = _read_media_file("_mdict_dictionary.js")
+    ui_content = _read_media_file("_mdict_ui.js")
+    main_content = _read_media_file("_mdict_main.js")
+    assert re.search(r"options\.language", dictionary_content)
+    assert re.search(r"tokenizers\[language\]\.dictionaryIds", dictionary_content)
+    assert re.search(
+        r"lookupFromToken\(word,\s*null,\s*prefixHtml,\s*language\)", main_content
+    )
+    assert re.search(
+        r"Dictionary\.lookup\(word,\s*dictionaryId,\s*lookupOptions\)", ui_content
+    )
+
+
+def test_lookup_threads_language_context() -> None:
+    main_content = _read_media_file("_mdict_main.js")
+    ui_content = _read_media_file("_mdict_ui.js")
+    dict_content = _read_media_file("_mdict_dictionary.js")
+
+    assert "data-mdict-lang" in main_content
+    assert re.search(r"lookupFromToken\([^\)]*language", main_content)
+    assert "lastLookupLanguage" in ui_content
+    assert re.search(
+        r"Dictionary\.lookup\([^,]+,\s*[^,]+,\s*lookupOptions\)", ui_content
+    )
+    assert re.search(
+        r"lookup:\s*function\s*\(word,\s*dictionaryId,\s*options\)", dict_content
+    )
