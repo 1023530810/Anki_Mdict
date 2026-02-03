@@ -76,6 +76,7 @@
 
     var content = document.createElement("div");
     content.className = "md-popup-content";
+    bindEntryLinks(content, input, dictSwitch);
 
     popupEl.appendChild(header);
     popupEl.appendChild(controls);
@@ -97,6 +98,62 @@
       option.value = dict.id;
       option.textContent = dict.name;
       selectEl.appendChild(option);
+    });
+  }
+
+  function extractEntryWord(link) {
+    if (!link) return "";
+    var href = link.getAttribute("href") || "";
+    if (!href || href.indexOf("entry://") !== 0) {
+      href = link.href || "";
+    }
+    if (!href || href.indexOf("entry://") !== 0) {
+      return "";
+    }
+    var word = href.slice(8);
+    if (!word) return "";
+    try {
+      word = decodeURIComponent(word);
+    } catch (error) {
+      word = String(word);
+    }
+    return word.trim();
+  }
+
+  function bindEntryLinks(container, input, dictSwitch) {
+    if (!container || container.dataset.mdictEntryBound === "1") {
+      return;
+    }
+    container.dataset.mdictEntryBound = "1";
+    container.addEventListener("click", function (event) {
+      var target = event.target;
+      var link = null;
+      var word = "";
+      var dictId = null;
+      var href = "";
+      if (target && target.closest) {
+        link = target.closest('a[href^="entry://"]');
+      } else if (target && target.tagName === "A") {
+        href = target.getAttribute("href") || "";
+        if (href.indexOf("entry://") === 0) {
+          link = target;
+        }
+      }
+      if (!link) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      word = extractEntryWord(link);
+      if (!word) {
+        return;
+      }
+      if (input) {
+        input.value = word;
+        input.focus();
+      }
+      dictId = dictSwitch ? dictSwitch.value || null : null;
+      lookupAndRender(word, dictId, null);
     });
   }
 
@@ -136,7 +193,8 @@
     var config = window.MD && window.MD.State ? window.MD.State.config : null;
     if (!config || !config.dictionaries) return html;
     var dict = null;
-    for (var i = 0; i < config.dictionaries.length; i++) {
+    var i = 0;
+    for (i = 0; i < config.dictionaries.length; i++) {
       if (config.dictionaries[i].id === dictionaryId) {
         dict = config.dictionaries[i];
         break;
@@ -162,12 +220,12 @@
     var dictSwitch = popup.querySelector(".md-popup-dict-switch");
     var config = window.MD.Config ? window.MD.Config.getAll() : null;
     var height = (options && options.height) || (config ? config.popupHeight : "medium");
+    var dictionaryId = options && options.dictionaryId;
 
     popup.className = "md-popup";
     popup.classList.add("md-popup-" + height);
     titleEl.textContent = (options && options.title) || "辞典";
     // 修复 CSS 引用
-    var dictionaryId = options && options.dictionaryId;
     contentEl.innerHTML = fixCssReferences(content, dictionaryId);
     updateDictOptions(dictSwitch);
     popup.classList.remove("md-popup-hidden");
