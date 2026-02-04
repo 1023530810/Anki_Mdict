@@ -175,6 +175,9 @@
     var popup = ensurePopup();
     var content = popup.querySelector(".md-popup-content");
     var titleEl = popup.querySelector(".md-popup-title");
+    var dictSwitch = popup.querySelector(".md-popup-dict-switch");
+    var dictOptions = null;
+    var dictOptionIndex = 0;
     var lastLanguage = null;
     content.innerHTML = "<div class=\"md-loading\">加载中...</div>";
     var lookupOptions = options || {};
@@ -188,6 +191,7 @@
     window.MD.Dictionary.lookup(word, dictionaryId, lookupOptions).then(function (result) {
       if (!result.found) {
         content.innerHTML = "<div class=\"md-empty\">未找到释义</div>";
+        content.scrollTop = 0;
         if (titleEl) {
           titleEl.textContent = word;
         }
@@ -196,6 +200,16 @@
       var html = fixCssReferences(result.definition, result.dictionaryId);
       var fullHtml = prefixHtml ? prefixHtml + html : html;
       content.innerHTML = "<div class=\"mdict-" + result.dictionaryId + "\">" + fullHtml + "</div>";
+      content.scrollTop = 0;
+      if (dictSwitch && result.dictionaryId) {
+        dictOptions = dictSwitch.options;
+        for (dictOptionIndex = 0; dictOptionIndex < dictOptions.length; dictOptionIndex++) {
+          if (dictOptions[dictOptionIndex].value === result.dictionaryId) {
+            dictSwitch.value = result.dictionaryId;
+            break;
+          }
+        }
+      }
       if (titleEl) {
         titleEl.textContent = result.dictionaryName || word;
       }

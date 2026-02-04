@@ -94,3 +94,9 @@ def test_lookup_threads_language_context() -> None:
     assert re.search(
         r"lookup:\s*function\s*\(word,\s*dictionaryId,\s*options\)", dict_content
     )
+
+
+def test_lookup_scrolls_and_syncs_dictionary_select() -> None:
+    ui_content = _read_media_file("_mdict_ui.js")
+    assert "content.scrollTop = 0" in ui_content
+    assert re.search(r"dictSwitch\.value\s*=\s*result\.dictionaryId", ui_content)
