@@ -169,7 +169,232 @@
     window.MD.UI.lookupFromToken(word, null, prefixHtml, language);
   }
 
+  function supportsLanguage(dict, language) {
+    if (!language) {
+      return true;
+    }
+    if (!dict) {
+      return false;
+    }
+    if (dict.language) {
+      return dict.language === language;
+    }
+    if (dict.languages && dict.languages.length) {
+      return dict.languages.indexOf(language) !== -1;
+    }
+    return false;
+  }
+
+  function getEnabledDictionaryIds(allDicts) {
+    var config = window.MD && window.MD.Config ? window.MD.Config.getAll() : null;
+    var enabled = config && config.enabledDictionaries ? config.enabledDictionaries.slice() : [];
+    if (!enabled.length) {
+      enabled = (allDicts || []).map(function (dict) {
+        return dict.id;
+      });
+    }
+    return enabled;
+  }
+
+  function fixCssReferences(html, dictionaryId) {
+    if (!html || !dictionaryId) return html || "";
+    var config = window.MD && window.MD.State ? window.MD.State.config : null;
+    if (!config || !config.dictionaries) return html;
+    var dict = null;
+    var i = 0;
+    for (i = 0; i < config.dictionaries.length; i++) {
+      if (config.dictionaries[i].id === dictionaryId) {
+        dict = config.dictionaries[i];
+        break;
+      }
+    }
+    if (!dict || !dict.resources || !dict.resources.cssFile) return html;
+    var actualCss = dict.resources.cssFile;
+    // 替换 <link href="xxx.css">
+    html = html.replace(/<link[^>]+href=["']([^"']+\.css)["'][^>]*>/gi, function (match, cssPath) {
+      return match.replace(cssPath, actualCss);
+    });
+    // 替换 @import url("xxx.css")
+    html = html.replace(/@import\s+url\(["']?([^"')]+\.css)["']?\)/gi, function (match, cssPath) {
+      return match.replace(cssPath, actualCss);
+    });
+    return html;
+  }
+
+  function normalizeLookupResult(result, requestId) {
+    var normalized = result || { found: false };
+    var contentHtml = normalized.contentHtml || normalized.definition || "";
+    if (contentHtml) {
+      normalized.contentHtml = contentHtml;
+      if (!normalized.definition) {
+        normalized.definition = contentHtml;
+      }
+    }
+    if (typeof requestId !== "undefined") {
+      normalized.requestId = requestId;
+    }
+    return normalized;
+  }
+
+  function renderResult(container, result, options) {
+    if (!container) {
+      return;
+    }
+    var opts = options || {};
+    var emptyHtml = opts.emptyHtml || "<div class=\"md-empty\">未找到释义</div>";
+    var errorHtml = opts.errorHtml || "<div class=\"md-error\">查询失败</div>";
+    var prefixHtml = opts.prefixHtml || "";
+    var normalized = normalizeLookupResult(result, result ? result.requestId : undefined);
+
+    if (!normalized.found) {
+      if (normalized.error) {
+        container.innerHTML = errorHtml;
+      } else {
+        container.innerHTML = emptyHtml;
+      }
+      return;
+    }
+
+    var html = fixCssReferences(normalized.contentHtml || "", normalized.dictionaryId);
+    var fullHtml = prefixHtml ? prefixHtml + html : html;
+    container.innerHTML = "<div class=\"mdict-" + normalized.dictionaryId + "\">" + fullHtml + "</div>";
+  }
+
+  function syncDictionarySelect(selectElOrContainer, dictionaryId, dicts, options) {
+    if (!selectElOrContainer) {
+      return;
+    }
+    var opts = options || {};
+    var activeClass = opts.activeClass || "active";
+    if (selectElOrContainer.tagName === "SELECT") {
+      selectElOrContainer.value = dictionaryId || "";
+      return;
+    }
+
+    var labelEl = opts.labelEl || null;
+    var menuEl = opts.menuEl || null;
+    var selected = null;
+    var i = 0;
+    var activeItem = null;
+
+    if (dicts && dicts.length && dictionaryId) {
+      for (i = 0; i < dicts.length; i++) {
+        if (dicts[i].id === dictionaryId) {
+          selected = dicts[i];
+          break;
+        }
+      }
+    }
+
+    if (selectElOrContainer.dataset) {
+      selectElOrContainer.dataset.selectedId = dictionaryId || "";
+    }
+
+    if (labelEl) {
+      labelEl.textContent = selected ? selected.name : "";
+    }
+
+    if (menuEl) {
+      menuEl.querySelectorAll("." + activeClass).forEach(function (item) {
+        item.classList.remove(activeClass);
+      });
+      if (dictionaryId) {
+        activeItem = menuEl.querySelector("[data-dict-id=\"" + dictionaryId + "\"]");
+        if (activeItem) {
+          activeItem.classList.add(activeClass);
+        }
+      }
+    }
+  }
+
+  function scrollToTop(scrollContainer) {
+    if (!scrollContainer) {
+      return;
+    }
+    scrollContainer.scrollTop = 0;
+  }
+
+  function ensureApiFacade() {
+    if (!window.MD) {
+      window.MD = {};
+    }
+    if (!window.MD.API) {
+      window.MD.API = {};
+    }
+
+    window.MD.API.version = function () {
+      return "1.0.0";
+    };
+
+    window.MD.API.init = function (options) {
+      return window.MD.init(options);
+    };
+
+    window.MD.API.getDictionaries = function (options) {
+      var opts = options || {};
+      var dicts = window.MD.Dictionary ? window.MD.Dictionary.getDictionaries() : [];
+      var filtered = dicts.slice();
+      var enabled = null;
+      if (opts.language) {
+        filtered = filtered.filter(function (dict) {
+          return supportsLanguage(dict, opts.language);
+        });
+      }
+      if (opts.enabledOnly) {
+        enabled = getEnabledDictionaryIds(filtered.length ? filtered : dicts);
+        if (enabled && enabled.length) {
+          filtered = filtered.filter(function (dict) {
+            return enabled.indexOf(dict.id) !== -1;
+          });
+        }
+      }
+      return filtered;
+    };
+
+    window.MD.API.lookup = function (word, options) {
+      var opts = options || {};
+      var requestId = opts.requestId;
+      var dictionaryId = opts.dictionaryId || null;
+      var config = window.MD && window.MD.State ? window.MD.State.config : null;
+      if (!config || !window.MD || !window.MD.Dictionary) {
+        return Promise.resolve({
+          found: false,
+          requestId: requestId,
+          error: { code: "CONFIG_MISSING", message: "配置未加载" },
+        });
+      }
+
+      var lookupOptions = {
+        language: opts.language || null,
+        followed: opts.followed || false,
+        requestId: requestId,
+      };
+
+      return window.MD.Dictionary.lookup(word, dictionaryId, lookupOptions)
+        .then(function (result) {
+          return normalizeLookupResult(result, requestId);
+        })
+        .catch(function (error) {
+          return {
+            found: false,
+            requestId: requestId,
+            error: {
+              code: error && error.message ? error.message : "LOOKUP_FAILED",
+              message: error && error.message ? error.message : "查询失败",
+            },
+          };
+        });
+    };
+
+    window.MD.API.ui = {
+      renderResult: renderResult,
+      syncDictionarySelect: syncDictionarySelect,
+      scrollToTop: scrollToTop,
+    };
+  }
+
   window.MD.init = init;
   window.MD.emit = emit;
   window.MD.handleTokenClick = handleTokenClick;
+  ensureApiFacade();
 })();
