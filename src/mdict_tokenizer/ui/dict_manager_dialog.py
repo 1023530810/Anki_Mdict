@@ -90,6 +90,13 @@ class DictManagerDialog:
         )
         self.dict_table.setTextElideMode(elide_right)
 
+        scroll_bar_off = (
+            qt_core.ScrollBarPolicy.ScrollBarAlwaysOff
+            if hasattr(qt_core, "ScrollBarPolicy")
+            else qt_core.ScrollBarAlwaysOff
+        )
+        self.dict_table.setHorizontalScrollBarPolicy(scroll_bar_off)
+
         item_view = qt["QAbstractItemView"]
         selection_mode = (
             item_view.SelectionMode.SingleSelection
@@ -193,6 +200,9 @@ class DictManagerDialog:
         header.sectionResized.connect(self._on_header_section_resized)
         self._schedule_apply_column_ratios()
 
+        self._original_resize_event = self._dialog.resizeEvent
+        self._dialog.resizeEvent = self._on_dialog_resized
+
         self.refresh_languages()
 
     def exec(self) -> int:
@@ -269,6 +279,12 @@ class DictManagerDialog:
             return
         ratios = [width / total for width in widths]
         self._save_column_ratios(ratios)
+
+    def _on_dialog_resized(self, event) -> None:
+        if hasattr(self, "_original_resize_event") and self._original_resize_event:
+            self._original_resize_event(event)
+        ratios = self._load_column_ratios()
+        self._apply_column_ratios(ratios)
 
     def refresh_languages(self, selected: str | None = None) -> None:
         """刷新语言下拉"""
