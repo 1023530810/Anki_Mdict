@@ -77,16 +77,6 @@ def show_dict_manager_dialog() -> None:
     dialog.exec()
 
 
-def show_tokenizer_config_dialog() -> None:
-    """显示分词配置对话框"""
-    if mw is None:
-        return
-    from .ui.tokenizer_config_dialog import TokenizerConfigDialog
-
-    dialog = TokenizerConfigDialog(mw)
-    dialog.exec()
-
-
 def show_template_inject_dialog() -> None:
     """显示模板注入对话框"""
     if mw is None:
@@ -120,10 +110,6 @@ def setup_menu() -> None:
     dict_action = QAction("辞典管理...", mw)
     dict_action.triggered.connect(show_dict_manager_dialog)
     menu.addAction(dict_action)
-
-    tokenizer_action = QAction("分词配置...", mw)
-    tokenizer_action.triggered.connect(show_tokenizer_config_dialog)
-    menu.addAction(tokenizer_action)
 
     template_action = QAction("模板注入...", mw)
     template_action.triggered.connect(show_template_inject_dialog)
