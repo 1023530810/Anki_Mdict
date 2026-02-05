@@ -4,14 +4,15 @@
 
 重要边界：
 
-- **唯一稳定契约**：`window.MD.API`（签名、事件、数据形状以 `Anki_Mdict/docs/js-api.md` 为准）。
+- **唯一稳定契约**：`window.MD.API`（签名、事件、数据形状以 `api/core.md` 为准）。
 - **不稳定/内部实现**：除 `MD.API` 之外的 `MD.*`（例如 `MD.Dictionary`、`MD.emit`、`MD.State`、`MD.Config` 等）均属于内部或兼容层，可能在未来调整。
 
 相关文档：
 
-- 稳定契约（必读）：`Anki_Mdict/docs/js-api.md`
-- 事件（DOM CustomEvent）：`Anki_Mdict/docs/events.md`
-- UI 工具与组件约定：`Anki_Mdict/docs/ui-components.md`
+- 稳定契约（必读）：`api/core.md`
+- 数据模型：`api/data-models.md`
+- 事件（DOM CustomEvent）：`api/events.md`
+- UI 工具与组件约定：`api/ui.md`
 
 ---
 
@@ -124,4 +125,4 @@
 </script>
 ```
 
-提示：如果你需要监听查词事件（例如外部输入触发、埋点），请看 `Anki_Mdict/docs/events.md`。
+提示：如果你需要监听查词事件（例如外部输入触发、埋点），请看 `api/events.md`。

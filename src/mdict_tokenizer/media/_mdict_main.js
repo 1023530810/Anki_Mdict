@@ -314,61 +314,227 @@
     scrollContainer.scrollTop = 0;
   }
 
-  function ensureApiFacade() {
-    if (!window.MD) {
-      window.MD = {};
-    }
-    if (!window.MD.API) {
-      window.MD.API = {};
-    }
+   function ensureApiFacade() {
+     var DEFAULT_CONFIG, CONFIG_SCHEMA, configChangeCallbacks, schema, type, remainder, i;
 
-    var DEFAULT_CONFIG = {
-      readingMode: "lookup",
-      extractLemma: true,
-      fontSize: 16,
-      clickBehavior: "click",
-      historyLimit: 50,
-      popupHeight: "medium",
-      tokenStyle: "underline",
-      enabledDictionaries: [],
-    };
+     if (!window.MD) {
+       window.MD = {};
+     }
+     if (!window.MD.API) {
+       window.MD.API = {};
+     }
 
-    window.MD.API.version = function () {
-      return "1.1.0";
-    };
+     DEFAULT_CONFIG = {
+       readingMode: "lookup",
+       extractLemma: true,
+       fontSize: 16,
+       clickBehavior: "click",
+       historyLimit: 50,
+       popupHeight: "medium",
+       tokenStyle: "underline",
+       enabledDictionaries: [],
+     };
 
-    window.MD.API.config = {
-      get: function (key) {
-        return window.MD.Config.get(key);
-      },
+     CONFIG_SCHEMA = {
+       readingMode: {
+         type: "select",
+         options: ["none", "lookup", "all"],
+         default: "lookup",
+       },
+       extractLemma: {
+         type: "boolean",
+         default: true,
+       },
+       fontSize: {
+         type: "number",
+         min: 12,
+         max: 32,
+         step: 2,
+         default: 16,
+       },
+       clickBehavior: {
+         type: "select",
+         options: ["click", "longpress"],
+         default: "click",
+       },
+       historyLimit: {
+         type: "select",
+         options: [10, 50, 100],
+         default: 50,
+       },
+       popupHeight: {
+         type: "select",
+         options: ["small", "medium", "large", "full"],
+         default: "medium",
+       },
+       tokenStyle: {
+         type: "select",
+         options: ["underline", "background", "none"],
+         default: "underline",
+       },
+       enabledDictionaries: {
+         type: "array",
+         itemType: "string",
+         default: [],
+       },
+     };
 
-      set: function (key, value) {
-        window.MD.Config.set(key, value);
-      },
+     configChangeCallbacks = [];
 
-      getAll: function () {
-        return window.MD.Config.getAll();
-      },
+     function validateConfig(key, value) {
+       if (!CONFIG_SCHEMA.hasOwnProperty(key)) {
+         throw new Error("Invalid config key: " + key);
+       }
 
-      reset: function (key) {
-        if (key) {
-          if (DEFAULT_CONFIG.hasOwnProperty(key)) {
-            window.MD.Config.set(key, DEFAULT_CONFIG[key]);
-          }
-        } else {
-          Object.keys(DEFAULT_CONFIG).forEach(function (k) {
-            window.MD.Config.set(k, DEFAULT_CONFIG[k]);
-          });
-        }
-      },
+       schema = CONFIG_SCHEMA[key];
+       type = schema.type;
 
-      apply: function () {
-        var config = window.MD.Config.getAll();
-        if (window.applyConfig && typeof window.applyConfig === "function") {
-          window.applyConfig(config);
-        }
-      },
-    };
+       if (type === "boolean") {
+         if (typeof value !== "boolean") {
+           throw new Error(
+             "Invalid value for " + key + ": expected boolean, got " + typeof value
+           );
+         }
+       } else if (type === "number") {
+         if (typeof value !== "number") {
+           throw new Error(
+             "Invalid value for " + key + ": expected number, got " + typeof value
+           );
+         }
+         if (schema.hasOwnProperty("min") && value < schema.min) {
+           throw new Error(
+             "Invalid value for " +
+               key +
+               ": must be >= " +
+               schema.min +
+               ", got " +
+               value
+           );
+         }
+         if (schema.hasOwnProperty("max") && value > schema.max) {
+           throw new Error(
+             "Invalid value for " +
+               key +
+               ": must be <= " +
+               schema.max +
+               ", got " +
+               value
+           );
+         }
+         if (schema.hasOwnProperty("step")) {
+           remainder = (value - schema.min) % schema.step;
+           if (Math.abs(remainder) > 0.0001) {
+             throw new Error(
+               "Invalid value for " +
+                 key +
+                 ": must be a multiple of " +
+                 schema.step +
+                 ", got " +
+                 value
+             );
+           }
+         }
+       } else if (type === "select") {
+         if (schema.options.indexOf(value) === -1) {
+           throw new Error(
+             "Invalid value for " +
+               key +
+               ": must be one of [" +
+               schema.options.join(", ") +
+               "], got " +
+               value
+           );
+         }
+       } else if (type === "array") {
+         if (!Array.isArray(value)) {
+           throw new Error(
+             "Invalid value for " + key + ": expected array, got " + typeof value
+           );
+         }
+         if (schema.itemType === "string") {
+           for (i = 0; i < value.length; i++) {
+             if (typeof value[i] !== "string") {
+               throw new Error(
+                 "Invalid value for " +
+                   key +
+                   ": array item at index " +
+                   i +
+                   " is not a string"
+               );
+             }
+           }
+         }
+       }
+     }
+
+     window.MD.API.version = function () {
+       return "1.1.0";
+     };
+
+     window.MD.API.config = {
+       get: function (key) {
+         return window.MD.Config.get(key);
+       },
+
+       set: function (key, value) {
+         validateConfig(key, value);
+         window.MD.Config.set(key, value);
+         configChangeCallbacks.forEach(function (callback) {
+           try {
+             callback(key, value);
+           } catch (error) {
+             console.error("Error in onChange callback:", error);
+           }
+         });
+       },
+
+       getAll: function () {
+         return window.MD.Config.getAll();
+       },
+
+       reset: function (key) {
+         if (key) {
+           if (DEFAULT_CONFIG.hasOwnProperty(key)) {
+             window.MD.Config.set(key, DEFAULT_CONFIG[key]);
+             configChangeCallbacks.forEach(function (callback) {
+               try {
+                 callback(key, DEFAULT_CONFIG[key]);
+               } catch (error) {
+                 console.error("Error in onChange callback:", error);
+               }
+             });
+           }
+         } else {
+           Object.keys(DEFAULT_CONFIG).forEach(function (k) {
+             window.MD.Config.set(k, DEFAULT_CONFIG[k]);
+             configChangeCallbacks.forEach(function (callback) {
+               try {
+                 callback(k, DEFAULT_CONFIG[k]);
+               } catch (error) {
+                 console.error("Error in onChange callback:", error);
+               }
+             });
+           });
+         }
+       },
+
+       apply: function () {
+         var config = window.MD.Config.getAll();
+         if (window.applyConfig && typeof window.applyConfig === "function") {
+           window.applyConfig(config);
+         }
+       },
+
+       getSchema: function () {
+         return CONFIG_SCHEMA;
+       },
+
+       onChange: function (callback) {
+         if (typeof callback === "function") {
+           configChangeCallbacks.push(callback);
+         }
+       },
+     };
 
     window.MD.API.init = function (options) {
       return window.MD.init(options);
