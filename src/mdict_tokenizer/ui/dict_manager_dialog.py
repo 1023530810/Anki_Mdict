@@ -34,6 +34,7 @@ def _load_qt():
         "QCheckBox": qt.QCheckBox,
         "QComboBox": qt.QComboBox,
         "QDialog": qt.QDialog,
+        "QDialogButtonBox": qt.QDialogButtonBox,
         "QFileDialog": qt.QFileDialog,
         "QGroupBox": qt.QGroupBox,
         "QHBoxLayout": qt.QHBoxLayout,
@@ -43,6 +44,7 @@ def _load_qt():
         "QLineEdit": qt.QLineEdit,
         "QMessageBox": qt.QMessageBox,
         "QPushButton": qt.QPushButton,
+        "QScrollArea": qt.QScrollArea,
         "QSettings": qt.QSettings,
         "QTableWidget": qt.QTableWidget,
         "QTableWidgetItem": qt.QTableWidgetItem,
@@ -440,7 +442,14 @@ class DictManagerDialog:
             lambda _checked=False, dict_id=dictionary.id: self.on_delete(dict_id)
         )
 
-        for btn in [mdd_button, css_button, rename_button, delete_button]:
+        lang_button = self._qt["QPushButton"]("选择语言")
+        lang_button.clicked.connect(
+            lambda _checked=False, dict_id=dictionary.id: self.on_edit_languages(
+                dict_id
+            )
+        )
+
+        for btn in [mdd_button, css_button, rename_button, delete_button, lang_button]:
             btn.setMinimumWidth(50)
             btn.setMaximumWidth(70)
 
@@ -448,6 +457,7 @@ class DictManagerDialog:
         layout.addWidget(css_button)
         layout.addWidget(rename_button)
         layout.addWidget(delete_button)
+        layout.addWidget(lang_button)
         layout.addStretch()
 
         container.setLayout(layout)
@@ -725,3 +735,119 @@ class DictManagerDialog:
         dict_map = {item.id: item.name for item in config.dictionaries}
         names = [dict_map.get(r["dictionary_id"], r["dictionary_id"]) for r in results]
         self.lookup_result.setText(f"命中：{', '.join(names)}")
+
+    def on_edit_languages(self, dict_id: str) -> None:
+        """编辑辞典语言"""
+        config = load_config(self.media_dir)
+        dictionary = next(
+            (item for item in config.dictionaries if item.id == dict_id), None
+        )
+        if dictionary is None:
+            return
+
+        all_languages = collect_languages(config.dictionaries, config.tokenizers)
+        if not all_languages:
+            all_languages = {"ja", "en"}
+
+        language_names = {
+            "ja": "日语",
+            "en": "英语",
+            "zh": "中文",
+            "ko": "韩语",
+            "fr": "法语",
+            "de": "德语",
+            "es": "西班牙语",
+            "it": "意大利语",
+            "pt": "葡萄牙语",
+            "ru": "俄语",
+        }
+
+        dialog = self._qt["QDialog"](self._dialog)
+        dialog.setWindowTitle("编辑辞典语言")
+        dialog.resize(320, 400)
+
+        layout = self._qt["QVBoxLayout"]()
+
+        name_label = self._qt["QLabel"](f"辞典名称：{dictionary.name}")
+        layout.addWidget(name_label)
+
+        select_label = self._qt["QLabel"]("选择适用语言：")
+        layout.addWidget(select_label)
+
+        scroll_area = self._qt["QScrollArea"]()
+        scroll_area.setWidgetResizable(True)
+        scroll_widget = self._qt["QWidget"]()
+        scroll_layout = self._qt["QVBoxLayout"]()
+        scroll_layout.setContentsMargins(4, 4, 4, 4)
+        scroll_layout.setSpacing(4)
+
+        checkboxes: list[tuple[str, object]] = []
+        for lang in sorted(all_languages):
+            display_name = language_names.get(lang, lang)
+            checkbox = self._qt["QCheckBox"](f"{lang} ({display_name})")
+            checkbox.setChecked(lang in dictionary.languages)
+            checkboxes.append((lang, checkbox))
+            scroll_layout.addWidget(checkbox)
+
+        scroll_layout.addStretch()
+        scroll_widget.setLayout(scroll_layout)
+        scroll_area.setWidget(scroll_widget)
+        layout.addWidget(scroll_area)
+
+        custom_label = self._qt["QLabel"]("自定义语言：")
+        layout.addWidget(custom_label)
+
+        custom_input = self._qt["QLineEdit"]()
+        custom_input.setPlaceholderText("逗号分隔，如：vi, th, ar")
+        layout.addWidget(custom_input)
+
+        hint_label = self._qt["QLabel"]("(添加不在列表中的语言)")
+        layout.addWidget(hint_label)
+
+        button_box = self._qt["QDialogButtonBox"](
+            self._qt["QDialogButtonBox"].StandardButton.Ok
+            | self._qt["QDialogButtonBox"].StandardButton.Cancel
+        )
+        layout.addWidget(button_box)
+
+        dialog.setLayout(layout)
+
+        button_box.rejected.connect(dialog.reject)
+
+        def on_accept():
+            selected_languages: list[str] = []
+            for lang, checkbox in checkboxes:
+                checker = getattr(checkbox, "isChecked", None)
+                if callable(checker) and checker():
+                    selected_languages.append(lang)
+
+            custom_text = custom_input.text().strip()
+            if custom_text:
+                custom_langs = [
+                    lang.strip() for lang in custom_text.split(",") if lang.strip()
+                ]
+                for lang in custom_langs:
+                    if lang not in selected_languages:
+                        selected_languages.append(lang)
+
+            if not selected_languages:
+                self._qt["QMessageBox"].warning(dialog, "提示", "请至少选择一种语言")
+                return
+
+            self._save_dictionary_languages(dict_id, selected_languages)
+            dialog.accept()
+
+        button_box.accepted.connect(on_accept)
+
+        dialog.exec()
+
+    def _save_dictionary_languages(self, dict_id: str, languages: list[str]) -> None:
+        """保存辞典语言设置"""
+        config = load_config(self.media_dir)
+        for i, dictionary in enumerate(config.dictionaries):
+            if dictionary.id == dict_id:
+                config.dictionaries[i] = replace(dictionary, languages=languages)
+                break
+        save_config(self.media_dir, config)
+        self.refresh_languages()
+        self.refresh_list()
