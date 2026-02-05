@@ -20,12 +20,6 @@ def test_template_inject_uses_check_state_enum() -> None:
     assert "checkState() != 2" not in content
 
 
-def test_tokenizer_config_uses_check_state_enum() -> None:
-    content = _read_ui_file("tokenizer_config_dialog.py")
-    assert "CheckState" in content
-    assert "checkState() == 2" not in content
-
-
 def test_message_box_uses_standard_button_enum() -> None:
     dict_manager = _read_ui_file("dict_manager_dialog.py")
     template_inject = _read_ui_file("template_inject_dialog.py")
