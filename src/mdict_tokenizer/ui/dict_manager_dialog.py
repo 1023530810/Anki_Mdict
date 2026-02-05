@@ -201,6 +201,22 @@ class DictManagerDialog:
         if not language:
             return
         config = load_config(self.media_dir)
+
+        # 加载分词配置
+        tokenizer = config.tokenizers.get(language)
+        self.extract_lemma_box.setChecked(
+            tokenizer.extract_lemma if tokenizer else True
+        )
+        # 根据语言设置发音标注复选框
+        if language == "ja":
+            self.show_pronunciation_box.setChecked(
+                tokenizer.show_reading if tokenizer else False
+            )
+        else:  # en
+            self.show_pronunciation_box.setChecked(
+                tokenizer.show_ipa if tokenizer else False
+            )
+
         dictionaries = [
             dictionary
             for dictionary in config.dictionaries
@@ -561,7 +577,44 @@ class DictManagerDialog:
             return
         ordered_rows = list(self._iter_ordered_rows())
         ordered_ids = resolve_enabled_dictionary_ids(ordered_rows)
-        self._save_language_dictionary_ids(language, ordered_ids)
+
+        config = load_config(self.media_dir)
+        tokenizer = config.tokenizers.get(language)
+        if tokenizer:
+            tokenizer = replace(
+                tokenizer,
+                extract_lemma=self.extract_lemma_box.isChecked(),
+                dictionary_ids=ordered_ids,
+            )
+            if language == "ja":
+                tokenizer = replace(
+                    tokenizer,
+                    show_reading=self.show_pronunciation_box.isChecked(),
+                )
+            else:
+                tokenizer = replace(
+                    tokenizer,
+                    show_ipa=self.show_pronunciation_box.isChecked(),
+                )
+            config.tokenizers[language] = tokenizer
+        else:
+            if language == "ja":
+                tokenizer = TokenizerConfig(
+                    language=language,
+                    extract_lemma=self.extract_lemma_box.isChecked(),
+                    show_reading=self.show_pronunciation_box.isChecked(),
+                    dictionary_ids=ordered_ids,
+                )
+            else:
+                tokenizer = TokenizerConfig(
+                    language=language,
+                    extract_lemma=self.extract_lemma_box.isChecked(),
+                    show_ipa=self.show_pronunciation_box.isChecked(),
+                    dictionary_ids=ordered_ids,
+                )
+            config.tokenizers[language] = tokenizer
+        save_config(self.media_dir, config)
+
         self._staged_rows_by_language.pop(language, None)
         self._qt["QMessageBox"].information(self._dialog, "完成", "更改已保存")
         self.refresh_list()
