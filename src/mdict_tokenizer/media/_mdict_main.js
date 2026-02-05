@@ -322,8 +322,52 @@
       window.MD.API = {};
     }
 
+    var DEFAULT_CONFIG = {
+      readingMode: "lookup",
+      extractLemma: true,
+      fontSize: 16,
+      clickBehavior: "click",
+      historyLimit: 50,
+      popupHeight: "medium",
+      tokenStyle: "underline",
+      enabledDictionaries: [],
+    };
+
     window.MD.API.version = function () {
-      return "1.0.0";
+      return "1.1.0";
+    };
+
+    window.MD.API.config = {
+      get: function (key) {
+        return window.MD.Config.get(key);
+      },
+
+      set: function (key, value) {
+        window.MD.Config.set(key, value);
+      },
+
+      getAll: function () {
+        return window.MD.Config.getAll();
+      },
+
+      reset: function (key) {
+        if (key) {
+          if (DEFAULT_CONFIG.hasOwnProperty(key)) {
+            window.MD.Config.set(key, DEFAULT_CONFIG[key]);
+          }
+        } else {
+          Object.keys(DEFAULT_CONFIG).forEach(function (k) {
+            window.MD.Config.set(k, DEFAULT_CONFIG[k]);
+          });
+        }
+      },
+
+      apply: function () {
+        var config = window.MD.Config.getAll();
+        if (window.applyConfig && typeof window.applyConfig === "function") {
+          window.applyConfig(config);
+        }
+      },
     };
 
     window.MD.API.init = function (options) {
