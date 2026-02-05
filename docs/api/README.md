@@ -1,7 +1,7 @@
 # API 文档索引
 
-> 版本：1.0.0  
-> 最后更新：2026-02-05
+> 版本：2.0.0  
+> 最后更新：2026-02-06
 
 本目录包含 `window.MD.API` 的完整稳定契约文档。
 
@@ -64,6 +64,59 @@
 
 ---
 
+## 📦 嵌入式容器用法
+
+### 在自定义容器中嵌入字典面板
+
+v2.0.0 新增嵌入式模式，允许将字典面板嵌入到页面的指定容器中。
+
+**步骤 1：创建容器元素**
+
+```html
+<div id="mdict-panel"></div>
+```
+
+**步骤 2：使用 `targetContainer` 初始化**
+
+```js
+MD.API.init({
+  targetContainer: '#mdict-panel'
+});
+```
+
+**完整示例**：
+
+```html
+<div id="mdict-panel" style="width: 100%; height: 400px; border: 1px solid #ccc;"></div>
+
+<script>
+  (function () {
+    document.addEventListener('md:ready', function () {
+      var api = window.MD && window.MD.API;
+      if (!api) return;
+
+      // 检查当前模式
+      var mode = api.ui.getMode();
+      console.log('字典面板模式:', mode); // 'embedded' 或 'modal'
+
+      // 查词示例
+      api.lookup('テスト').then(function (result) {
+        console.log('查词结果:', result);
+      });
+    }, { once: true });
+
+    // 初始化（指定容器）
+    if (window.MD && window.MD.API) {
+      window.MD.API.init({
+        targetContainer: '#mdict-panel'
+      });
+    }
+  })();
+</script>
+```
+
+---
+
 ## 📖 API 方法速查
 
 ### 初始化与状态
@@ -99,6 +152,9 @@
 | `MD.API.ui.renderResult(container, result, options?)` | 渲染查词结果 | [ui.md](ui.md#mdapiuirenderresult) |
 | `MD.API.ui.syncDictionarySelect(el, dictId, dicts, options?)` | 同步字典选择器 | [ui.md](ui.md#mdapiuisyncdictionaryselect) |
 | `MD.API.ui.scrollToTop(container)` | 滚动到顶部 | [ui.md](ui.md#mdapiuiscrolltotop) |
+| `MD.API.ui.getMode()` | 获取当前 UI 模式 | [ui.md](ui.md#mdapiuigetmode) |
+| `MD.API.ui.showPanel()` | 显示字典面板 | [ui.md](ui.md#mdapiuishowpanel) |
+| `MD.API.ui.hidePanel()` | 隐藏字典面板 | [ui.md](ui.md#mdapiuihidepanel) |
 
 ---
 
@@ -287,7 +343,111 @@ type LookupResult = {
 
 | 版本 | 日期 | 变更说明 |
 |------|------|----------|
+| 2.0.0 | 2026-02-06 | 新增嵌入式模式、`targetContainer` 选项、`getMode()`/`showPanel()`/`hidePanel()` 方法 |
 | 1.0.0 | 2026-02-05 | 首次发布稳定契约 |
+
+---
+
+## 🔄 迁移指南：v1.x → v2.0.0
+
+### 破坏性变更
+
+**版本号**：
+- v1.x：`MD.API.version()` 返回 `"1.0.0"`
+- v2.0.0：`MD.API.version()` 返回 `"2.0.0"`
+
+**UI 架构**：
+- v2.0.0 引入双模式架构（嵌入式 + 弹窗）
+- 旧的纯弹窗 UI 被新的面板结构替代
+
+### 新增功能
+
+**1. 容器支持（嵌入式模式）**
+
+```js
+// v2.0.0: 指定容器实现嵌入式模式
+MD.API.init({
+  targetContainer: '#mdict-panel'
+});
+```
+
+**2. 模式检测**
+
+```js
+// v2.0.0: 检查当前模式
+var mode = MD.API.ui.getMode();  // 'embedded' 或 'modal'
+```
+
+**3. 面板可见性控制**
+
+```js
+// v2.0.0: 程序化显示/隐藏面板
+MD.API.ui.showPanel();
+MD.API.ui.hidePanel();
+```
+
+### 兼容性
+
+**保留的 API**（无需修改）：
+- `MD.API.lookup(word, options)`
+- `MD.API.getDictionaries(options)`
+- `MD.API.ui.renderResult()`
+- `MD.API.ui.syncDictionarySelect()`
+- `MD.API.ui.scrollToTop()`
+- 事件：`md:ready`、`md:lookup`、`md:error`
+
+**已弃用**（仍可用但不推荐）：
+- 直接操作弹窗元素（请使用新的面板结构和 API）
+
+### 升级步骤
+
+**步骤 1：更新版本检测**
+
+```js
+// 旧代码
+if (MD.API.version() === '1.0.0') { /* ... */ }
+
+// 新代码
+if (MD.API.version() === '2.0.0') { /* ... */ }
+```
+
+**步骤 2：（可选）启用嵌入式模式**
+
+如果希望使用嵌入式模式：
+
+```html
+<!-- 添加容器 -->
+<div id="mdict-panel"></div>
+
+<script>
+  // 初始化时指定容器
+  MD.API.init({
+    targetContainer: '#mdict-panel'
+  });
+</script>
+```
+
+**步骤 3：（可选）使用新的面板控制 API**
+
+```js
+// 检测模式
+var mode = MD.API.ui.getMode();
+
+// 控制面板显示
+MD.API.ui.showPanel();
+MD.API.ui.hidePanel();
+```
+
+### 常见问题
+
+**Q: v1.x 代码是否需要修改？**  
+A: 不需要。所有 v1.x API 在 v2.0.0 中保持兼容。
+
+**Q: 如何判断是否在嵌入式模式？**  
+A: 使用 `MD.API.ui.getMode()` 检查返回值。
+
+**Q: 可以动态切换模式吗？**  
+A: 不可以。模式在初始化时确定，取决于 `targetContainer` 参数和容器是否存在。
 
 ---
 

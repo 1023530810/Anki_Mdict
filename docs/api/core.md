@@ -28,7 +28,7 @@ window.MD.API
 
 ### `MD.API.version(): string`
 - 返回稳定契约版本号（SemVer）。
-- **推荐值**：`"1.0.0"`（首次稳定版）。
+- **当前版本**：`"2.0.0"`
 
 ---
 
@@ -41,7 +41,34 @@ window.MD.API
 **参数**（与 `MD.init` 保持一致）：
 - `options.configPath?: string`（默认 `_mdict_config.json`）
 - `options.autoTokenize?: boolean`（默认 `true`）
-- `options.targetContainer?: string | null`
+- `options.targetContainer?: string | HTMLElement | null`（默认 `null`）
+
+#### `options.targetContainer`
+
+**类型**：`string | HTMLElement | null`  
+**可选**：是  
+**默认值**：`null`
+
+指定字典面板的容器元素，用于嵌入式模式。可以是：
+- 字符串（元素 ID，例如 `'#mdict-panel'` 或 `'mdict-panel'`）
+- DOM 元素引用
+
+如果提供且元素存在，面板将在容器内渲染（嵌入式模式）。否则回退到弹窗模式。
+
+**示例**：
+
+```js
+// 使用元素 ID
+MD.API.init({
+  targetContainer: '#mdict-panel'
+});
+
+// 使用 DOM 元素
+var container = document.getElementById('mdict-panel');
+MD.API.init({
+  targetContainer: container
+});
+```
 
 **行为**
 - 成功后触发 `md:ready` 事件（见"事件"）。

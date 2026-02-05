@@ -167,3 +167,93 @@
 // 直接可用
 MD.API.ui.scrollToTop(document.getElementById('ls-dict-content'));
 ```
+
+---
+
+## `MD.API.ui.getMode()`
+
+用途：获取当前 UI 模式（嵌入式或弹窗式）。
+
+**返回值**：`string` - `'embedded'` 或 `'modal'`
+
+**说明**：
+- `'embedded'`：面板嵌入在指定容器中（通过 `targetContainer` 初始化）
+- `'modal'`：面板以弹窗形式显示（未指定容器或容器不存在）
+
+**示例**：
+
+```js
+var mode = MD.API.ui.getMode();
+if (mode === 'embedded') {
+  console.log('面板嵌入在容器中');
+} else {
+  console.log('面板以弹窗形式显示');
+}
+```
+
+---
+
+## `MD.API.ui.showPanel()`
+
+用途：显示字典面板。
+
+**说明**：
+- 在 `embedded` 模式下：显示容器元素
+- 在 `modal` 模式下：显示弹窗
+
+**示例**：
+
+```js
+// 显示面板
+MD.API.ui.showPanel();
+```
+
+---
+
+## `MD.API.ui.hidePanel()`
+
+用途：隐藏字典面板。
+
+**说明**：
+- 在 `embedded` 模式下：隐藏容器元素
+- 在 `modal` 模式下：关闭弹窗
+
+**示例**：
+
+```js
+// 隐藏面板
+MD.API.ui.hidePanel();
+```
+
+**完整示例（模式检测与面板控制）**：
+
+```html
+<button id="toggle-panel">切换面板</button>
+<div id="mdict-panel"></div>
+
+<script>
+  (function () {
+    document.addEventListener('md:ready', function () {
+      var api = window.MD && window.MD.API;
+      if (!api) return;
+
+      var toggleBtn = document.getElementById('toggle-panel');
+      var isVisible = false;
+
+      toggleBtn.addEventListener('click', function () {
+        var mode = api.ui.getMode();
+        console.log('当前模式:', mode);
+
+        if (isVisible) {
+          api.ui.hidePanel();
+          toggleBtn.textContent = '显示面板';
+        } else {
+          api.ui.showPanel();
+          toggleBtn.textContent = '隐藏面板';
+        }
+        isVisible = !isVisible;
+      });
+    }, { once: true });
+  })();
+</script>
+```
