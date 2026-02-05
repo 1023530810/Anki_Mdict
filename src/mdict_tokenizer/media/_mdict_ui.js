@@ -722,14 +722,18 @@
   }
 
   function lookupAndRender(word, dictionaryId, prefixHtml, options) {
-    var popup = ensurePopup();
-    var content = popup.querySelector(".md-popup-content");
-    var titleEl = popup.querySelector(".md-popup-title");
-    var dictSwitch = popup.querySelector(".md-popup-dict-switch");
-    var dictOptions = null;
-    var dictOptionIndex = 0;
+    var panel = ensurePanel();
+    var elements = window.MD.UI.elements;
     var lastLanguage = null;
-    content.innerHTML = "<div class=\"md-loading\">加载中...</div>";
+
+    if (!elements || !elements.contentBody) {
+      if (window.console && window.console.error) {
+        console.error('[MD.UI] lookupAndRender: elements not available');
+      }
+      return;
+    }
+
+    elements.contentBody.innerHTML = "<div class=\"md-loading\">加载中...</div>";
     
     window.MD.UI.currentWord = word;
     if (dictionaryId) {
@@ -746,11 +750,12 @@
     setLastLookupLanguage(lookupOptions.language);
     window.MD.Dictionary.lookup(word, dictionaryId, lookupOptions).then(function (result) {
       if (!result.found) {
-        content.innerHTML = "<div class=\"md-empty\">未找到释义</div>";
-        content.scrollTop = 0;
-        if (titleEl) {
-          titleEl.textContent = word;
+        elements.contentBody.innerHTML = "<div class=\"md-empty\">未找到释义</div>";
+        elements.contentBody.scrollTop = 0;
+        if (elements.title) {
+          elements.title.textContent = word;
         }
+        updateCounter();
         return;
       }
       
@@ -760,19 +765,15 @@
       
       var html = fixCssReferences(result.definition, result.dictionaryId);
       var fullHtml = prefixHtml ? prefixHtml + html : html;
-      content.innerHTML = "<div class=\"mdict-" + result.dictionaryId + "\">" + fullHtml + "</div>";
-      content.scrollTop = 0;
-      if (dictSwitch && result.dictionaryId) {
-        dictOptions = dictSwitch.options;
-        for (dictOptionIndex = 0; dictOptionIndex < dictOptions.length; dictOptionIndex++) {
-          if (dictOptions[dictOptionIndex].value === result.dictionaryId) {
-            dictSwitch.value = result.dictionaryId;
-            break;
-          }
-        }
+      elements.contentBody.innerHTML = "<div class=\"mdict-" + result.dictionaryId + "\">" + fullHtml + "</div>";
+      elements.contentBody.scrollTop = 0;
+
+      if (result.dictionaryId) {
+        selectDictionary(result.dictionaryId, result.dictionaryName);
       }
-      if (titleEl) {
-        titleEl.textContent = result.dictionaryName || word;
+
+      if (elements.title) {
+        elements.title.textContent = result.dictionaryName || word;
       }
       window.MD.History.add({
         word: word,
@@ -783,6 +784,7 @@
       if (window.MD && typeof window.MD.emit === "function") {
         window.MD.emit("md:lookup", { word: word, result: result });
       }
+      updateCounter();
     });
   }
 
