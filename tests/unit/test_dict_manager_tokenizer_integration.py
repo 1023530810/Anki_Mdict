@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.mdict_tokenizer.config import (
+from mdict_tokenizer.config import (
     MainConfig,
     TokenizerConfig,
     load_config,
