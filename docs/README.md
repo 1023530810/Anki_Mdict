@@ -9,10 +9,12 @@
 
 相关文档：
 
-- 稳定契约（必读）：`api/core.md`
-- 数据模型：`api/data-models.md`
-- 事件（DOM CustomEvent）：`api/events.md`
-- UI 工具与组件约定：`api/ui.md`
+- **[API 文档索引](api/README.md)**（推荐入口）：完整 API 速查表与使用场景索引
+- 稳定契约（必读）：[api/core.md](api/core.md) - 核心 API 方法
+- 配置管理：[api/config.md](api/config.md) - 配置 API（读取/修改/监听）
+- 数据模型：[api/data-models.md](api/data-models.md) - `Dictionary` 与 `LookupResult`
+- 事件系统：[api/events.md](api/events.md) - `md:ready`、`md:error`、`md:lookup`
+- UI 工具：[api/ui.md](api/ui.md) - 渲染结果、字典选择器、滚动
 
 ---
 
