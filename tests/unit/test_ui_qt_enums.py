@@ -33,18 +33,17 @@ def test_message_box_uses_standard_button_enum() -> None:
     assert "StandardButton" in template_inject
 
 
-def test_dict_manager_persists_header_state() -> None:
+def test_dict_manager_uses_stretch_resize_mode() -> None:
     content = _read_ui_file("dict_manager_dialog.py")
-    assert "QSettings" in content
-    assert "mdict_tokenizer/DictManagerDialog/v1/header_state" in content
+    assert "Stretch" in content
+    assert "setSectionResizeMode" in content
 
 
-def test_dict_manager_action_widget_two_rows() -> None:
+def test_dict_manager_action_widget_single_row() -> None:
     content = _read_ui_file("dict_manager_dialog.py")
-    assert "QVBoxLayout" in content
     assert "QHBoxLayout" in content
-    assert "addLayout(first_row_layout)" in content
-    assert "addLayout(second_row_layout)" in content
+    assert "setMinimumWidth" in content
+    assert "setMaximumWidth" in content
 
 
 def test_dict_manager_drag_reorder_rebuild_hook_exists() -> None:

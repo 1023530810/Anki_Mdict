@@ -31,7 +31,6 @@ def _load_qt():
     qt = importlib.import_module("aqt.qt")
     return {
         "QAbstractItemView": qt.QAbstractItemView,
-        "QByteArray": qt.QByteArray,
         "QCheckBox": qt.QCheckBox,
         "QComboBox": qt.QComboBox,
         "QDialog": qt.QDialog,
@@ -43,7 +42,6 @@ def _load_qt():
         "QLineEdit": qt.QLineEdit,
         "QMessageBox": qt.QMessageBox,
         "QPushButton": qt.QPushButton,
-        "QSettings": qt.QSettings,
         "QTableWidget": qt.QTableWidget,
         "QTableWidgetItem": qt.QTableWidgetItem,
         "QVBoxLayout": qt.QVBoxLayout,
@@ -53,8 +51,6 @@ def _load_qt():
 
 class DictManagerDialog:
     """辞典管理对话框"""
-
-    _HEADER_STATE_KEY = "mdict_tokenizer/DictManagerDialog/v1/header_state"
 
     def __init__(self, mw) -> None:
         qt = _load_qt()
@@ -112,26 +108,17 @@ class DictManagerDialog:
         header = self.dict_table.horizontalHeader()
         if hasattr(header, "setCascadingSectionResizes"):
             header.setCascadingSectionResizes(True)
-        if hasattr(header, "setStretchLastSection"):
-            header.setStretchLastSection(True)
         header_resize = qt["QHeaderView"]
-        resize_mode = (
-            header_resize.ResizeMode.Interactive
+        stretch_mode = (
+            header_resize.ResizeMode.Stretch
             if hasattr(header_resize, "ResizeMode")
-            else header_resize.Interactive
+            else header_resize.Stretch
         )
         if hasattr(header, "setSectionResizeMode"):
-            header.setSectionResizeMode(0, resize_mode)
-            header.setSectionResizeMode(1, resize_mode)
-            header.setSectionResizeMode(2, resize_mode)
+            header.setSectionResizeMode(stretch_mode)
         vertical_header = self.dict_table.verticalHeader()
         if vertical_header is not None:
             vertical_header.setVisible(False)
-
-        settings = qt["QSettings"]()
-        saved_state = settings.value(self._HEADER_STATE_KEY)
-        if saved_state is not None:
-            header.restoreState(qt["QByteArray"](saved_state))
 
         self.save_order_button = qt["QPushButton"]("保存更改")
         self.save_order_button.clicked.connect(self.on_save_order)
@@ -171,14 +158,7 @@ class DictManagerDialog:
         self._current_language = ""
         self._rebuilding_after_move = False
 
-        self._dialog.finished.connect(self._save_header_state)
         self.refresh_languages()
-
-    def _save_header_state(self) -> None:
-        header = self.dict_table.horizontalHeader()
-        state = header.saveState()
-        settings = self._qt["QSettings"]()
-        settings.setValue(self._HEADER_STATE_KEY, state)
 
     def exec(self) -> int:
         """显示对话框"""
@@ -292,10 +272,11 @@ class DictManagerDialog:
         return f"MDD:{mdd_text}  CSS:{css_text}  资源:{dictionary.resources.resource_count}"
 
     def _build_action_widget(self, dictionary: Dictionary, enabled: bool):
-        """构建行内操作区（两行布局）"""
+        """构建行内操作区"""
         container = self._qt["QWidget"]()
-        main_layout = self._qt["QVBoxLayout"]()
-        main_layout.setContentsMargins(0, 0, 0, 0)
+        layout = self._qt["QHBoxLayout"]()
+        layout.setContentsMargins(2, 2, 2, 2)
+        layout.setSpacing(4)
 
         enable_box = self._qt["QCheckBox"]("启用")
         enable_box.setChecked(enabled)
@@ -307,14 +288,14 @@ class DictManagerDialog:
         self._enable_boxes[dictionary.id] = enable_box
 
         mdd_button = self._qt["QPushButton"](
-            "删除 MDD" if dictionary.resources.has_mdd else "添加 MDD"
+            "删除MDD" if dictionary.resources.has_mdd else "添加MDD"
         )
         mdd_button.clicked.connect(
             lambda _checked=False, dict_id=dictionary.id: self.on_mdd_action(dict_id)
         )
 
         css_button = self._qt["QPushButton"](
-            "删除 CSS" if dictionary.resources.css_file else "添加 CSS"
+            "删除CSS" if dictionary.resources.css_file else "添加CSS"
         )
         css_button.clicked.connect(
             lambda _checked=False, dict_id=dictionary.id: self.on_css_action(dict_id)
@@ -325,25 +306,23 @@ class DictManagerDialog:
             lambda _checked=False, dict_id=dictionary.id: self.on_rename(dict_id)
         )
 
-        delete_button = self._qt["QPushButton"]("删除辞典")
+        delete_button = self._qt["QPushButton"]("删除")
         delete_button.clicked.connect(
             lambda _checked=False, dict_id=dictionary.id: self.on_delete(dict_id)
         )
 
-        first_row_layout = self._qt["QHBoxLayout"]()
-        first_row_layout.setContentsMargins(0, 0, 0, 0)
-        first_row_layout.addWidget(enable_box)
-        first_row_layout.addWidget(mdd_button)
-        first_row_layout.addWidget(css_button)
+        for btn in [mdd_button, css_button, rename_button, delete_button]:
+            btn.setMinimumWidth(50)
+            btn.setMaximumWidth(70)
 
-        second_row_layout = self._qt["QHBoxLayout"]()
-        second_row_layout.setContentsMargins(0, 0, 0, 0)
-        second_row_layout.addWidget(rename_button)
-        second_row_layout.addWidget(delete_button)
+        layout.addWidget(enable_box)
+        layout.addWidget(mdd_button)
+        layout.addWidget(css_button)
+        layout.addWidget(rename_button)
+        layout.addWidget(delete_button)
+        layout.addStretch()
 
-        main_layout.addLayout(first_row_layout)
-        main_layout.addLayout(second_row_layout)
-        container.setLayout(main_layout)
+        container.setLayout(layout)
         return container
 
     def _save_language_dictionary_ids(

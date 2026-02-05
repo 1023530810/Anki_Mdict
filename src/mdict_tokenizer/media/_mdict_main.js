@@ -337,8 +337,9 @@
       var config = null;
       var tokenizers = null;
       var managedIds = null;
-      var userConfig = null;
-      var enabledIds = null;
+      var lang = null;
+      var langConfig = null;
+      var hasTokenizerConfig = false;
       if (opts.language) {
         filtered = filtered.filter(function (dict) {
           return supportsLanguage(dict, opts.language);
@@ -348,20 +349,32 @@
         config = window.MD && window.MD.State ? window.MD.State.config : null;
         tokenizers = config ? config.tokenizers : {};
         managedIds = null;
-        if (opts.language && tokenizers[opts.language] && tokenizers[opts.language].dictionaryIds) {
-          managedIds = tokenizers[opts.language].dictionaryIds || [];
-          if (managedIds.length) {
+        if (opts.language && tokenizers[opts.language] && Array.isArray(tokenizers[opts.language].dictionaryIds)) {
+          hasTokenizerConfig = true;
+          managedIds = tokenizers[opts.language].dictionaryIds;
+          filtered = filtered.filter(function (dict) {
+            return managedIds.indexOf(dict.id) !== -1;
+          });
+        } else if (!opts.language) {
+          managedIds = [];
+          for (lang in tokenizers) {
+            if (tokenizers.hasOwnProperty(lang)) {
+              langConfig = tokenizers[lang];
+              if (langConfig && Array.isArray(langConfig.dictionaryIds)) {
+                hasTokenizerConfig = true;
+                langConfig.dictionaryIds.forEach(function (id) {
+                  if (managedIds.indexOf(id) === -1) {
+                    managedIds.push(id);
+                  }
+                });
+              }
+            }
+          }
+          if (hasTokenizerConfig) {
             filtered = filtered.filter(function (dict) {
               return managedIds.indexOf(dict.id) !== -1;
             });
           }
-        }
-        userConfig = window.MD && window.MD.Config ? window.MD.Config.getAll() : null;
-        enabledIds = userConfig && userConfig.enabledDictionaries ? userConfig.enabledDictionaries : [];
-        if (enabledIds.length) {
-          filtered = filtered.filter(function (dict) {
-            return enabledIds.indexOf(dict.id) !== -1;
-          });
         }
       }
       return filtered;
