@@ -19,18 +19,26 @@ class TryLookupService:
 
     def try_lookup(self, language: str, word: str) -> dict[str, str] | None:
         """按语言顺序尝试查询，返回首个匹配结果"""
+        results = self.try_lookup_all(language, word)
+        return results[0] if results else None
+
+    def try_lookup_all(self, language: str, word: str) -> list[dict[str, str]]:
+        """按语言顺序尝试查询，返回所有命中的辞典"""
         config = load_config(self.media_dir)
         dictionaries = {dictionary.id: dictionary for dictionary in config.dictionaries}
         ordered_ids = self._resolve_dictionary_ids(config, language, dictionaries)
+        results: list[dict[str, str]] = []
         for dict_id in ordered_ids:
             result = self._lookup_in_dictionary(dict_id, word)
             if result is not None:
-                return {
-                    "dictionary_id": dict_id,
-                    "key": result["key"],
-                    "definition": result["definition"],
-                }
-        return None
+                results.append(
+                    {
+                        "dictionary_id": dict_id,
+                        "key": result["key"],
+                        "definition": result["definition"],
+                    }
+                )
+        return results
 
     def _resolve_dictionary_ids(
         self,

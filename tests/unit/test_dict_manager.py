@@ -284,3 +284,41 @@ def test_try_lookup_defaults_to_order(tmp_path: Path) -> None:
     assert result is not None
     assert result["dictionary_id"] == "dict_b"
     assert result["definition"] == "B"
+
+
+def test_try_lookup_all_returns_all_matches(tmp_path: Path) -> None:
+    _write_lookup_files(tmp_path, "dict_a", "hello", "A")
+    _write_lookup_files(tmp_path, "dict_b", "hello", "B")
+    config = MainConfig(
+        dictionaries=[
+            Dictionary(
+                id="dict_a",
+                name="A",
+                languages=["ja"],
+                order=1,
+                meta=DictionaryMeta(total_entries=1),
+                file_prefix="_mdict_dict_a",
+            ),
+            Dictionary(
+                id="dict_b",
+                name="B",
+                languages=["ja"],
+                order=0,
+                meta=DictionaryMeta(total_entries=1),
+                file_prefix="_mdict_dict_b",
+            ),
+        ],
+        tokenizers={
+            "ja": TokenizerConfig(language="ja", dictionary_ids=["dict_a", "dict_b"]),
+        },
+    )
+    save_config(tmp_path, config)
+
+    service = TryLookupService(tmp_path)
+    results = service.try_lookup_all("ja", "hello")
+
+    assert len(results) == 2
+    assert results[0]["dictionary_id"] == "dict_a"
+    assert results[0]["definition"] == "A"
+    assert results[1]["dictionary_id"] == "dict_b"
+    assert results[1]["definition"] == "B"

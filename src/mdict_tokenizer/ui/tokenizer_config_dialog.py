@@ -56,8 +56,8 @@ class TokenizerConfigDialog:
         self.language_box.currentTextChanged.connect(self.refresh)
 
         self.extract_lemma_box = qt["QCheckBox"]("提取单词原型")
-        self.show_reading_box = qt["QCheckBox"]("显示注音（仅日语）")
-        self.show_ipa_box = qt["QCheckBox"]("显示音标（仅英语）")
+        self.show_reading_box = qt["QCheckBox"]("显示注音")
+        self.show_ipa_box = qt["QCheckBox"]("显示音标")
 
         self.dict_list = qt["QListWidget"]()
         self.save_button = qt["QPushButton"]("保存配置")
@@ -97,8 +97,8 @@ class TokenizerConfigDialog:
         self.show_reading_box.setChecked(tokenizer.show_reading if tokenizer else False)
         self.show_ipa_box.setChecked(tokenizer.show_ipa if tokenizer else False)
 
-        self.show_reading_box.setEnabled(language == "ja")
-        self.show_ipa_box.setEnabled(language == "en")
+        self.show_reading_box.setVisible(language == "ja")
+        self.show_ipa_box.setVisible(language == "en")
 
         self.dict_list.clear()
         for dictionary in config.dictionaries:

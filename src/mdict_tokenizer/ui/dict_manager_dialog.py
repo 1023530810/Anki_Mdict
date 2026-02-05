@@ -552,20 +552,11 @@ class DictManagerDialog:
         if not language or not word:
             self._qt["QMessageBox"].warning(self._dialog, "提示", "请输入词条")
             return
-        result = self.lookup_service.try_lookup(language, word)
-        if result is None:
+        results = self.lookup_service.try_lookup_all(language, word)
+        if not results:
             self.lookup_result.setText("未命中")
             return
         config = load_config(self.media_dir)
-        dictionary = next(
-            (
-                item
-                for item in config.dictionaries
-                if item.id == result["dictionary_id"]
-            ),
-            None,
-        )
-        dict_name = dictionary.name if dictionary else result["dictionary_id"]
-        definition = result["definition"]
-        summary = definition[:200] + "..." if len(definition) > 200 else definition
-        self.lookup_result.setText(f"{dict_name}：{summary}")
+        dict_map = {item.id: item.name for item in config.dictionaries}
+        names = [dict_map.get(r["dictionary_id"], r["dictionary_id"]) for r in results]
+        self.lookup_result.setText(f"命中：{', '.join(names)}")
