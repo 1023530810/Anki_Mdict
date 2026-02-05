@@ -44,6 +44,41 @@ def resolve_enabled_dictionary_ids(rows: Iterable[tuple[str, bool]]) -> list[str
     return [dict_id for dict_id, enabled in rows if enabled]
 
 
+def update_staged_rows_by_language(
+    staged_rows_by_language: dict[str, list[tuple[str, bool]]],
+    language: str,
+    rows: Iterable[tuple[str, bool]],
+) -> dict[str, list[tuple[str, bool]]]:
+    """更新暂存状态：非空写入，空则移除"""
+    updated = dict(staged_rows_by_language)
+    rows_list = list(rows)
+    if rows_list:
+        updated[language] = rows_list
+    else:
+        _ = updated.pop(language, None)
+    return updated
+
+
+def resolve_display_order_from_staged(
+    dictionaries: Iterable[Dictionary],
+    staged_rows: Iterable[tuple[str, bool]],
+) -> tuple[list[Dictionary], set[str]]:
+    """根据暂存行顺序解析显示与启用集合"""
+    dictionary_list = list(dictionaries)
+    dict_map = {dictionary.id: dictionary for dictionary in dictionary_list}
+    enabled_ids = resolve_enabled_dictionary_ids(staged_rows)
+    enabled_set = set(enabled_ids)
+    ordered_ids = [dict_id for dict_id, _enabled in staged_rows if dict_id in dict_map]
+    ordered_set = set(ordered_ids)
+    missing_ids = [
+        dictionary.id
+        for dictionary in sorted(dictionary_list, key=lambda item: item.order)
+        if dictionary.id not in ordered_set
+    ]
+    ordered = [dict_map[dict_id] for dict_id in ordered_ids + missing_ids]
+    return ordered, enabled_set
+
+
 def build_enabled_dictionary_ids(rows: Iterable[tuple[str, bool]]) -> list[str]:
     """兼容旧命名的启用列表解析"""
     return resolve_enabled_dictionary_ids(rows)

@@ -31,3 +31,22 @@ def test_message_box_uses_standard_button_enum() -> None:
     template_inject = _read_ui_file("template_inject_dialog.py")
     assert "StandardButton" in dict_manager
     assert "StandardButton" in template_inject
+
+
+def test_dict_manager_persists_header_state() -> None:
+    content = _read_ui_file("dict_manager_dialog.py")
+    assert "QSettings" in content
+    assert "mdict_tokenizer/DictManagerDialog/v1/header_state" in content
+
+
+def test_dict_manager_action_widget_two_rows() -> None:
+    content = _read_ui_file("dict_manager_dialog.py")
+    assert "QVBoxLayout" in content
+    assert "QHBoxLayout" in content
+    assert "addLayout(first_row_layout)" in content
+    assert "addLayout(second_row_layout)" in content
+
+
+def test_dict_manager_drag_reorder_rebuild_hook_exists() -> None:
+    content = _read_ui_file("dict_manager_dialog.py")
+    assert "rowsMoved.connect" in content or "_on_rows_moved" in content

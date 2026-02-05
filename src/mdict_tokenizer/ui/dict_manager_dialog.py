@@ -17,7 +17,11 @@ from ..config import (
 )
 from ..dict_manager import DictionaryManager
 from ..try_lookup import TryLookupService
-from .dict_manager_dialog_logic import resolve_enabled_dictionary_ids
+from .dict_manager_dialog_logic import (
+    resolve_display_order_from_staged,
+    resolve_enabled_dictionary_ids,
+    update_staged_rows_by_language,
+)
 
 
 def _load_qt():
@@ -27,6 +31,7 @@ def _load_qt():
     qt = importlib.import_module("aqt.qt")
     return {
         "QAbstractItemView": qt.QAbstractItemView,
+        "QByteArray": qt.QByteArray,
         "QCheckBox": qt.QCheckBox,
         "QComboBox": qt.QComboBox,
         "QDialog": qt.QDialog,
@@ -38,6 +43,7 @@ def _load_qt():
         "QLineEdit": qt.QLineEdit,
         "QMessageBox": qt.QMessageBox,
         "QPushButton": qt.QPushButton,
+        "QSettings": qt.QSettings,
         "QTableWidget": qt.QTableWidget,
         "QTableWidgetItem": qt.QTableWidgetItem,
         "QVBoxLayout": qt.QVBoxLayout,
@@ -47,6 +53,8 @@ def _load_qt():
 
 class DictManagerDialog:
     """辞典管理对话框"""
+
+    _HEADER_STATE_KEY = "mdict_tokenizer/DictManagerDialog/v1/header_state"
 
     def __init__(self, mw) -> None:
         qt = _load_qt()
@@ -60,7 +68,7 @@ class DictManagerDialog:
         self._dialog.resize(860, 520)
 
         self.language_box = qt["QComboBox"]()
-        self.language_box.currentTextChanged.connect(self.refresh_list)
+        self.language_box.currentTextChanged.connect(self.on_language_changed)
 
         self.import_button = qt["QPushButton"]("导入 MDX")
         self.import_button.clicked.connect(self.on_import)
@@ -97,22 +105,31 @@ class DictManagerDialog:
         self.dict_table.setDropIndicatorShown(True)
         self.dict_table.setEditTriggers(no_edit)
 
+        table_model = self.dict_table.model()
+        if table_model is not None:
+            table_model.rowsMoved.connect(self._on_rows_moved)
+
         header = self.dict_table.horizontalHeader()
-        header.setStretchLastSection(True)
         header_resize = qt["QHeaderView"]
         resize_mode = (
-            header_resize.ResizeMode.Stretch
+            header_resize.ResizeMode.Interactive
             if hasattr(header_resize, "ResizeMode")
-            else header_resize.Stretch
+            else header_resize.Interactive
         )
         if hasattr(header, "setSectionResizeMode"):
             header.setSectionResizeMode(0, resize_mode)
             header.setSectionResizeMode(1, resize_mode)
+            header.setSectionResizeMode(2, resize_mode)
         vertical_header = self.dict_table.verticalHeader()
         if vertical_header is not None:
             vertical_header.setVisible(False)
 
-        self.save_order_button = qt["QPushButton"]("保存当前语言顺序")
+        settings = qt["QSettings"]()
+        saved_state = settings.value(self._HEADER_STATE_KEY)
+        if saved_state is not None:
+            header.restoreState(qt["QByteArray"](saved_state))
+
+        self.save_order_button = qt["QPushButton"]("保存更改")
         self.save_order_button.clicked.connect(self.on_save_order)
 
         self.lookup_input = qt["QLineEdit"]()
@@ -146,7 +163,18 @@ class DictManagerDialog:
 
         self._qt = qt
         self._enable_boxes: dict[str, object] = {}
+        self._staged_rows_by_language: dict[str, list[tuple[str, bool]]] = {}
+        self._current_language = ""
+        self._rebuilding_after_move = False
+
+        self._dialog.finished.connect(self._save_header_state)
         self.refresh_languages()
+
+    def _save_header_state(self) -> None:
+        header = self.dict_table.horizontalHeader()
+        state = header.saveState()
+        settings = self._qt["QSettings"]()
+        settings.setValue(self._HEADER_STATE_KEY, state)
 
     def exec(self) -> int:
         """显示对话框"""
@@ -181,9 +209,15 @@ class DictManagerDialog:
             for dictionary in config.dictionaries
             if language in dictionary.languages
         ]
-        ordered, enabled_set = self._resolve_display_order(
-            dictionaries, config.tokenizers, language
-        )
+        staged_rows = self._staged_rows_by_language.get(language)
+        if staged_rows:
+            ordered, enabled_set = self._resolve_display_order_from_staged(
+                dictionaries, staged_rows
+            )
+        else:
+            ordered, enabled_set = self._resolve_display_order(
+                dictionaries, config.tokenizers, language
+            )
 
         self._enable_boxes = {}
         self.dict_table.setRowCount(0)
@@ -206,6 +240,7 @@ class DictManagerDialog:
         if not ordered:
             self.dict_table.setRowCount(0)
         self.lookup_result.setText("")
+        self._current_language = language
 
     def _resolve_display_order(
         self,
@@ -239,6 +274,12 @@ class DictManagerDialog:
         )
         return enabled_list + disabled_list, enabled_set
 
+    def _resolve_display_order_from_staged(
+        self, dictionaries: list[Dictionary], staged_rows: list[tuple[str, bool]]
+    ) -> tuple[list[Dictionary], set[str]]:
+        """解析暂存显示顺序"""
+        return resolve_display_order_from_staged(dictionaries, staged_rows)
+
     def _build_resource_badge(self, dictionary: Dictionary) -> str:
         """构建资源徽标"""
         mdd_text = "有" if dictionary.resources.has_mdd else "无"
@@ -246,10 +287,10 @@ class DictManagerDialog:
         return f"MDD:{mdd_text}  CSS:{css_text}  资源:{dictionary.resources.resource_count}"
 
     def _build_action_widget(self, dictionary: Dictionary, enabled: bool):
-        """构建行内操作区"""
+        """构建行内操作区（两行布局）"""
         container = self._qt["QWidget"]()
-        layout = self._qt["QHBoxLayout"]()
-        layout.setContentsMargins(0, 0, 0, 0)
+        main_layout = self._qt["QVBoxLayout"]()
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
         enable_box = self._qt["QCheckBox"]("启用")
         enable_box.setChecked(enabled)
@@ -284,13 +325,20 @@ class DictManagerDialog:
             lambda _checked=False, dict_id=dictionary.id: self.on_delete(dict_id)
         )
 
-        layout.addWidget(enable_box)
-        layout.addWidget(mdd_button)
-        layout.addWidget(css_button)
-        layout.addWidget(rename_button)
-        layout.addWidget(delete_button)
-        layout.addStretch()
-        container.setLayout(layout)
+        first_row_layout = self._qt["QHBoxLayout"]()
+        first_row_layout.setContentsMargins(0, 0, 0, 0)
+        first_row_layout.addWidget(enable_box)
+        first_row_layout.addWidget(mdd_button)
+        first_row_layout.addWidget(css_button)
+
+        second_row_layout = self._qt["QHBoxLayout"]()
+        second_row_layout.setContentsMargins(0, 0, 0, 0)
+        second_row_layout.addWidget(rename_button)
+        second_row_layout.addWidget(delete_button)
+
+        main_layout.addLayout(first_row_layout)
+        main_layout.addLayout(second_row_layout)
+        container.setLayout(main_layout)
         return container
 
     def _save_language_dictionary_ids(
@@ -337,6 +385,33 @@ class DictManagerDialog:
             checker = getattr(enable_box, "isChecked", None)
             enabled = bool(checker()) if callable(checker) else False
             yield str(dict_id), enabled
+
+    def _stage_current_language(self) -> None:
+        """暂存当前语言表格状态"""
+        language = self._current_language or self.language_box.currentText()
+        if not language:
+            return
+        staged_rows = list(self._iter_ordered_rows())
+        self._staged_rows_by_language = update_staged_rows_by_language(
+            self._staged_rows_by_language, language, staged_rows
+        )
+
+    def _on_rows_moved(self, *args) -> None:
+        """拖拽排序后重建表格显示"""
+        if self._rebuilding_after_move:
+            return
+        self._rebuilding_after_move = True
+        try:
+            self._stage_current_language()
+            self.refresh_list()
+        finally:
+            self._rebuilding_after_move = False
+
+    def on_language_changed(self, language: str) -> None:
+        """切换语言"""
+        self._stage_current_language()
+        self._current_language = language
+        self.refresh_list()
 
     def on_import(self) -> None:
         """导入辞典"""
@@ -431,13 +506,9 @@ class DictManagerDialog:
 
     def on_toggle_enabled(self, dict_id: str, enabled: bool) -> None:
         """切换启用状态"""
-        language = self.language_box.currentText()
-        if not language:
+        if not self.language_box.currentText():
             return
-        if enabled:
-            self._append_language_dictionary_id(language, dict_id)
-        else:
-            self._remove_language_dictionary_id(language, dict_id)
+        self._stage_current_language()
         self.refresh_list()
 
     def on_rename(self, dict_id: str) -> None:
@@ -486,7 +557,8 @@ class DictManagerDialog:
         ordered_rows = list(self._iter_ordered_rows())
         ordered_ids = resolve_enabled_dictionary_ids(ordered_rows)
         self._save_language_dictionary_ids(language, ordered_ids)
-        self._qt["QMessageBox"].information(self._dialog, "完成", "排序已保存")
+        self._staged_rows_by_language.pop(language, None)
+        self._qt["QMessageBox"].information(self._dialog, "完成", "更改已保存")
         self.refresh_list()
 
     def on_try_lookup(self) -> None:

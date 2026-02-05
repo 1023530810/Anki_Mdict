@@ -334,17 +334,33 @@
       var opts = options || {};
       var dicts = window.MD.Dictionary ? window.MD.Dictionary.getDictionaries() : [];
       var filtered = dicts.slice();
-      var enabled = null;
+      var config = null;
+      var tokenizers = null;
+      var managedIds = null;
+      var userConfig = null;
+      var enabledIds = null;
       if (opts.language) {
         filtered = filtered.filter(function (dict) {
           return supportsLanguage(dict, opts.language);
         });
       }
       if (opts.enabledOnly) {
-        enabled = getEnabledDictionaryIds(filtered.length ? filtered : dicts);
-        if (enabled && enabled.length) {
+        config = window.MD && window.MD.State ? window.MD.State.config : null;
+        tokenizers = config ? config.tokenizers : {};
+        managedIds = null;
+        if (opts.language && tokenizers[opts.language] && tokenizers[opts.language].dictionaryIds) {
+          managedIds = tokenizers[opts.language].dictionaryIds || [];
+          if (managedIds.length) {
+            filtered = filtered.filter(function (dict) {
+              return managedIds.indexOf(dict.id) !== -1;
+            });
+          }
+        }
+        userConfig = window.MD && window.MD.Config ? window.MD.Config.getAll() : null;
+        enabledIds = userConfig && userConfig.enabledDictionaries ? userConfig.enabledDictionaries : [];
+        if (enabledIds.length) {
           filtered = filtered.filter(function (dict) {
-            return enabled.indexOf(dict.id) !== -1;
+            return enabledIds.indexOf(dict.id) !== -1;
           });
         }
       }
