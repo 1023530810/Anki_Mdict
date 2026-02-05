@@ -468,7 +468,7 @@
      }
 
      window.MD.API.version = function () {
-       return "1.1.0";
+       return "2.0.0";
      };
 
      window.MD.API.config = {
@@ -537,7 +537,18 @@
      };
 
     window.MD.API.init = function (options) {
-      return window.MD.init(options);
+      var opts = options || {};
+      
+      // Handle targetContainer option for UI initialization
+      if (opts.targetContainer && window.MD && window.MD.UI) {
+        if (typeof opts.targetContainer === 'string') {
+          window.MD.UI.setContainer(opts.targetContainer);
+        } else if (opts.targetContainer.id) {
+          window.MD.UI.setContainer(opts.targetContainer.id);
+        }
+      }
+      
+      return window.MD.init(opts);
     };
 
     window.MD.API.getDictionaries = function (options) {
@@ -629,6 +640,67 @@
       renderResult: renderResult,
       syncDictionarySelect: syncDictionarySelect,
       scrollToTop: scrollToTop,
+      
+      getMode: function () {
+        if (window.MD && window.MD.UI && typeof window.MD.UI.getMode === 'function') {
+          return window.MD.UI.getMode();
+        }
+        return 'modal';
+      },
+      
+      showPanel: function () {
+        var mode;
+        var modal;
+        var overlay;
+        
+        if (window.MD && window.MD.UI) {
+          mode = window.MD.UI.getMode ? window.MD.UI.getMode() : 'modal';
+          if (mode === 'embedded') {
+            if (window.MD.UI.container) {
+              window.MD.UI.container.style.display = '';
+            }
+            if (window.MD.UI.panel) {
+              window.MD.UI.panel.style.display = '';
+            }
+          } else {
+            modal = document.querySelector('.md-modal');
+            overlay = document.querySelector('.md-modal-overlay');
+            if (modal) {
+              modal.classList.remove('md-modal-hidden');
+            }
+            if (overlay) {
+              overlay.classList.remove('md-modal-hidden');
+            }
+          }
+        }
+      },
+      
+      hidePanel: function () {
+        var mode;
+        var modal;
+        var overlay;
+        
+        if (window.MD && window.MD.UI) {
+          mode = window.MD.UI.getMode ? window.MD.UI.getMode() : 'modal';
+          if (mode === 'embedded') {
+            if (window.MD.UI.container) {
+              window.MD.UI.container.style.display = 'none';
+            }
+            if (window.MD.UI.panel) {
+              window.MD.UI.panel.style.display = 'none';
+            }
+          } else {
+            modal = document.querySelector('.md-modal');
+            overlay = document.querySelector('.md-modal-overlay');
+            if (modal) {
+              modal.classList.add('md-modal-hidden');
+            }
+            if (overlay) {
+              overlay.classList.add('md-modal-hidden');
+            }
+          }
+        }
+      }
     };
   }
 
