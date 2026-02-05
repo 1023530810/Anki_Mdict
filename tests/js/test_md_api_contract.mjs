@@ -153,6 +153,9 @@ async function run() {
     head: createElement("head"),
     documentElement: { style: { setProperty() {} } },
     createElement,
+    getElementById() {
+      return null;
+    },
     querySelector() {
       return null;
     },

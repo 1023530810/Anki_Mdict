@@ -6,7 +6,6 @@
   }
 
   var historyKey = "mdict_history";
-  var popupEl = null;
   var panelEl = null;
   var modalEl = null;
   var overlayEl = null;
@@ -130,6 +129,15 @@
     if (mode === 'embedded') {
       container = window.MD.UI.container;
       if (container) {
+        // Smart Mode: 检查容器是否可见且有尺寸
+        if (container.offsetHeight <= 0 && container.offsetWidth <= 0) {
+          if (window.console && window.console.warn) {
+            console.warn('[MD.UI] 嵌入式容器不可见(0x0)，回退到弹窗模式');
+          }
+          window.MD.UI.mode = 'modal';
+          window.MD.UI.container = null;
+          return ensurePanel();
+        }
         elements.closeBtn.className = 'md-panel-close md-hidden';
         container.appendChild(elements.panel);
         panelEl = elements.panel;
@@ -160,6 +168,9 @@
 
     bindDropdownEvents(elements);
     bindHotzoneEvents(elements);
+    bindCloseEvents(elements);
+    bindOverlayEvents();
+    bindSearchEvents(elements);
 
     return panelEl;
   }
@@ -558,6 +569,51 @@
     }
   }
 
+  function bindCloseEvents(elements) {
+    if (!elements || !elements.closeBtn) {
+      return;
+    }
+    elements.closeBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      hidePopup();
+    });
+  }
+
+  function bindOverlayEvents() {
+    if (!overlayEl) {
+      return;
+    }
+    overlayEl.addEventListener('click', function(e) {
+      e.preventDefault();
+      hidePopup();
+    });
+  }
+
+  function bindSearchEvents(elements) {
+    if (!elements || !elements.searchBtn || !elements.searchInput) {
+      return;
+    }
+
+    elements.searchBtn.addEventListener('click', function() {
+      var word = elements.searchInput.value;
+      if (word && word.replace(/^\s+|\s+$/g, '') !== '') {
+        lookupAndRender(word.replace(/^\s+|\s+$/g, ''), null, '', {});
+      }
+    });
+
+    elements.searchInput.addEventListener('keydown', function(e) {
+      var key = e.key || e.keyCode;
+      var word;
+      if (key === 'Enter' || key === 13) {
+        word = elements.searchInput.value;
+        if (word && word.replace(/^\s+|\s+$/g, '') !== '') {
+          lookupAndRender(word.replace(/^\s+|\s+$/g, ''), null, '', {});
+        }
+      }
+    });
+  }
+
   function getHistory() {
     var raw = localStorage.getItem(historyKey);
     if (!raw) {
@@ -572,83 +628,6 @@
 
   function saveHistory(entries) {
     localStorage.setItem(historyKey, JSON.stringify(entries));
-  }
-
-  function ensurePopup() {
-    if (popupEl) {
-      return popupEl;
-    }
-    popupEl = document.createElement("div");
-    popupEl.className = "md-popup md-popup-hidden";
-
-    var header = document.createElement("div");
-    header.className = "md-popup-header";
-    var title = document.createElement("div");
-    title.className = "md-popup-title";
-    var closeBtn = document.createElement("button");
-    closeBtn.className = "md-popup-close";
-    closeBtn.textContent = "×";
-    closeBtn.addEventListener("click", function () {
-      hidePopup();
-    });
-    header.appendChild(title);
-    header.appendChild(closeBtn);
-
-    var controls = document.createElement("div");
-    controls.className = "md-popup-controls";
-    var input = document.createElement("input");
-    input.type = "text";
-    input.placeholder = "输入单词查词";
-    input.className = "md-popup-input";
-    var searchBtn = document.createElement("button");
-    searchBtn.textContent = "搜索";
-    searchBtn.className = "md-popup-search";
-    searchBtn.addEventListener("click", function () {
-      var term = input.value.trim();
-      if (!term) {
-        return;
-      }
-      lookupAndRender(term, null, null);
-    });
-    controls.appendChild(input);
-    controls.appendChild(searchBtn);
-
-    var dictSwitch = document.createElement("select");
-    dictSwitch.className = "md-popup-dict-switch";
-    dictSwitch.addEventListener("change", function () {
-      var term = input.value.trim();
-      if (!term) {
-        return;
-      }
-      lookupAndRender(term, dictSwitch.value || null, null);
-    });
-    controls.appendChild(dictSwitch);
-
-    var content = document.createElement("div");
-    content.className = "md-popup-content";
-    bindEntryLinks(content, input, dictSwitch);
-
-    popupEl.appendChild(header);
-    popupEl.appendChild(controls);
-    popupEl.appendChild(content);
-
-    document.body.appendChild(popupEl);
-    return popupEl;
-  }
-
-  function updateDictOptions(selectEl) {
-    selectEl.innerHTML = "";
-    var dicts = window.MD.Dictionary.getDictionaries();
-    var defaultOption = document.createElement("option");
-    defaultOption.value = "";
-    defaultOption.textContent = "全部辞典";
-    selectEl.appendChild(defaultOption);
-    dicts.forEach(function (dict) {
-      var option = document.createElement("option");
-      option.value = dict.id;
-      option.textContent = dict.name;
-      selectEl.appendChild(option);
-    });
   }
 
   function extractEntryWord(link) {
@@ -813,30 +792,65 @@
     return html;
   }
 
+  /**
+   * showPopup - API 兼容层
+   * 内部重定向到新的 modal 系统
+   * @param {string} content - HTML 内容
+   * @param {Object} options - 选项 { title, height, dictionaryId }
+   * @returns {HTMLElement} 面板元素
+   */
   function showPopup(content, options) {
-    var popup = ensurePopup();
-    var titleEl = popup.querySelector(".md-popup-title");
-    var contentEl = popup.querySelector(".md-popup-content");
-    var dictSwitch = popup.querySelector(".md-popup-dict-switch");
-    var config = window.MD.Config ? window.MD.Config.getAll() : null;
-    var height = (options && options.height) || (config ? config.popupHeight : "medium");
+    var elements;
     var dictionaryId = options && options.dictionaryId;
+    var title = (options && options.title) || '辞典';
 
-    popup.className = "md-popup";
-    popup.classList.add("md-popup-" + height);
-    titleEl.textContent = (options && options.title) || "辞典";
-    // 修复 CSS 引用
-    contentEl.innerHTML = fixCssReferences(content, dictionaryId);
-    updateDictOptions(dictSwitch);
-    popup.classList.remove("md-popup-hidden");
-    return popup;
+    // 1. 确保面板存在
+    ensurePanel();
+
+    if (panelEl) {
+      panelEl.style.display = '';
+    }
+
+    // 2. 显示模态弹窗
+    if (modalEl) {
+      modalEl.classList.add('md-modal-visible');
+      modalEl.classList.remove('md-modal-hidden');
+    }
+    if (overlayEl) {
+      overlayEl.classList.add('md-modal-visible');
+      overlayEl.classList.remove('md-modal-hidden');
+    }
+
+    // 3. 更新标题
+    elements = window.MD.UI.elements;
+    if (elements && elements.title) {
+      elements.title.textContent = title;
+    }
+
+    // 4. 渲染内容
+    if (elements && elements.contentBody) {
+      elements.contentBody.innerHTML = fixCssReferences(content, dictionaryId);
+    }
+
+    return panelEl;
   }
 
+  /**
+   * hidePopup - API 兼容层
+   * 内部重定向到新的 modal 系统
+   */
   function hidePopup() {
-    if (!popupEl) {
-      return;
+    if (modalEl) {
+      modalEl.classList.remove('md-modal-visible');
+      modalEl.classList.add('md-modal-hidden');
     }
-    popupEl.classList.add("md-popup-hidden");
+    if (overlayEl) {
+      overlayEl.classList.remove('md-modal-visible');
+      overlayEl.classList.add('md-modal-hidden');
+    }
+    if (panelEl && window.MD.UI.getMode() === 'embedded') {
+      panelEl.style.display = 'none';
+    }
   }
 
   function applyFontSize(config) {
@@ -1047,12 +1061,39 @@
   }
 
   function lookupFromToken(word, dictionaryId, prefixHtml, language) {
-    var popup = showPopup("<div class=\"md-loading\">加载中...</div>", { title: word });
-    var input = popup.querySelector(".md-popup-input");
-    if (input) {
-      input.value = word;
-      input.focus();
+    var mode;
+    var elements;
+
+    // 1. 确保面板存在
+    ensurePanel();
+
+    if (panelEl) {
+      panelEl.style.display = '';
     }
+
+    // 2. 如果是弹窗模式，显示模态弹窗
+    mode = window.MD.UI.getMode();
+    if (mode === 'modal' && modalEl) {
+      modalEl.classList.add('md-modal-visible');
+      modalEl.classList.remove('md-modal-hidden');
+      if (overlayEl) {
+        overlayEl.classList.add('md-modal-visible');
+        overlayEl.classList.remove('md-modal-hidden');
+      }
+    }
+
+    // 3. 更新标题
+    elements = window.MD.UI.elements;
+    if (elements && elements.title) {
+      elements.title.textContent = word;
+    }
+
+    // 4. 显示加载中
+    if (elements && elements.contentBody) {
+      elements.contentBody.innerHTML = '<div class="md-loading">加载中...</div>';
+    }
+
+    // 5. 设置语言并执行查词
     setLastLookupLanguage(language);
     lookupAndRender(word, dictionaryId, prefixHtml, { language: language });
   }
@@ -1117,6 +1158,9 @@
      */
     detectContainer: function(containerId) {
       var id = containerId || 'mdict-panel';
+      if (id.charAt(0) === '#') {
+        id = id.substring(1);
+      }
       var container = document.getElementById(id);
       
       if (container) {
@@ -1140,7 +1184,11 @@
         return false;
       }
       
-      var container = document.getElementById(containerId);
+      var id = containerId;
+      if (id.charAt(0) === '#') {
+        id = id.substring(1);
+      }
+      var container = document.getElementById(id);
       if (container) {
         this.mode = 'embedded';
         this.container = container;
