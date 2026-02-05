@@ -35,6 +35,7 @@ def _load_qt():
         "QComboBox": qt.QComboBox,
         "QDialog": qt.QDialog,
         "QFileDialog": qt.QFileDialog,
+        "QGroupBox": qt.QGroupBox,
         "QHBoxLayout": qt.QHBoxLayout,
         "QHeaderView": qt.QHeaderView,
         "QInputDialog": qt.QInputDialog,
@@ -69,8 +70,8 @@ class DictManagerDialog:
         self.import_button = qt["QPushButton"]("导入 MDX")
         self.import_button.clicked.connect(self.on_import)
 
-        self.dict_table = qt["QTableWidget"](0, 3)
-        self.dict_table.setHorizontalHeaderLabels(["辞典", "资源", "操作"])
+        self.dict_table = qt["QTableWidget"](0, 4)
+        self.dict_table.setHorizontalHeaderLabels(["启用", "辞典", "资源", "操作"])
 
         item_view = qt["QAbstractItemView"]
         selection_mode = (
@@ -138,13 +139,25 @@ class DictManagerDialog:
         header_row.addStretch()
         header_row.addWidget(self.import_button)
 
+        # 分词选项区域
+        self.extract_lemma_box = qt["QCheckBox"]("提取单词原型（词根）")
+        self.show_pronunciation_box = qt["QCheckBox"]("显示发音标注")
+
+        tokenizer_group = qt["QGroupBox"]("分词选项")
+        tokenizer_layout = qt["QHBoxLayout"]()
+        tokenizer_layout.addWidget(self.extract_lemma_box)
+        tokenizer_layout.addWidget(self.show_pronunciation_box)
+        tokenizer_layout.addStretch()
+        tokenizer_group.setLayout(tokenizer_layout)
+
         lookup_row = qt["QHBoxLayout"]()
         lookup_row.addWidget(self.lookup_input)
         lookup_row.addWidget(self.lookup_button)
 
         layout = qt["QVBoxLayout"]()
         layout.addLayout(header_row)
-        layout.addWidget(qt["QLabel"]("拖拽调整顺序："))
+        layout.addWidget(tokenizer_group)
+        layout.addWidget(qt["QLabel"]("辞典列表（拖拽调整查询顺序）："))
         layout.addWidget(self.dict_table)
         layout.addWidget(self.save_order_button)
         layout.addWidget(qt["QLabel"]("快速试查："))
@@ -207,19 +220,37 @@ class DictManagerDialog:
         self.dict_table.setRowCount(0)
         for row_index, dictionary in enumerate(ordered):
             self.dict_table.insertRow(row_index)
+
+            # 第 0 列：启用复选框
+            enable_widget = self._qt["QWidget"]()
+            enable_layout = self._qt["QHBoxLayout"]()
+            enable_layout.setContentsMargins(4, 2, 4, 2)
+            enable_box = self._qt["QCheckBox"]()
+            enable_box.setChecked(dictionary.id in enabled_set)
+            enable_box.toggled.connect(
+                lambda checked, dict_id=dictionary.id: self.on_toggle_enabled(
+                    dict_id, checked
+                )
+            )
+            self._enable_boxes[dictionary.id] = enable_box
+            enable_layout.addWidget(enable_box)
+            enable_layout.addStretch()
+            enable_widget.setLayout(enable_layout)
+            self.dict_table.setCellWidget(row_index, 0, enable_widget)
+
+            # 第 1 列：辞典名称（存储 dict_id）
             name_item = self._qt["QTableWidgetItem"](dictionary.name)
             name_item.setData(256, dictionary.id)
-            self.dict_table.setItem(row_index, 0, name_item)
+            self.dict_table.setItem(row_index, 1, name_item)
 
+            # 第 2 列：资源状态
             badge_text = self._build_resource_badge(dictionary)
             badge_item = self._qt["QTableWidgetItem"](badge_text)
-            self.dict_table.setItem(row_index, 1, badge_item)
+            self.dict_table.setItem(row_index, 2, badge_item)
 
-            action_widget = self._build_action_widget(
-                dictionary,
-                dictionary.id in enabled_set,
-            )
-            self.dict_table.setCellWidget(row_index, 2, action_widget)
+            # 第 3 列：操作按钮
+            action_widget = self._build_action_widget(dictionary)
+            self.dict_table.setCellWidget(row_index, 3, action_widget)
             self.dict_table.resizeRowToContents(row_index)
 
         if not ordered:
@@ -271,21 +302,12 @@ class DictManagerDialog:
         css_text = "有" if dictionary.resources.css_file else "无"
         return f"MDD:{mdd_text}  CSS:{css_text}  资源:{dictionary.resources.resource_count}"
 
-    def _build_action_widget(self, dictionary: Dictionary, enabled: bool):
+    def _build_action_widget(self, dictionary: Dictionary):
         """构建行内操作区"""
         container = self._qt["QWidget"]()
         layout = self._qt["QHBoxLayout"]()
         layout.setContentsMargins(2, 2, 2, 2)
         layout.setSpacing(4)
-
-        enable_box = self._qt["QCheckBox"]("启用")
-        enable_box.setChecked(enabled)
-        enable_box.toggled.connect(
-            lambda checked, dict_id=dictionary.id: self.on_toggle_enabled(
-                dict_id, checked
-            )
-        )
-        self._enable_boxes[dictionary.id] = enable_box
 
         mdd_button = self._qt["QPushButton"](
             "删除MDD" if dictionary.resources.has_mdd else "添加MDD"
@@ -315,7 +337,6 @@ class DictManagerDialog:
             btn.setMinimumWidth(50)
             btn.setMaximumWidth(70)
 
-        layout.addWidget(enable_box)
         layout.addWidget(mdd_button)
         layout.addWidget(css_button)
         layout.addWidget(rename_button)
@@ -361,7 +382,7 @@ class DictManagerDialog:
     def _iter_ordered_rows(self) -> Iterable[tuple[str, bool]]:
         """读取表格顺序与启用状态"""
         for row_index in range(self.dict_table.rowCount()):
-            item = self.dict_table.item(row_index, 0)
+            item = self.dict_table.item(row_index, 1)
             if item is None:
                 continue
             dict_id = str(item.data(256))
