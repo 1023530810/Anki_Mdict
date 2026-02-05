@@ -328,3 +328,590 @@
   text-align: center;
   padding: 12px;
 }
+
+/* ==========================================================================
+   嵌入式面板样式（.md-panel）
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   主容器 - 自适应父容器尺寸
+   -------------------------------------------------------------------------- */
+.md-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: var(--md-card-bg);
+  border: 1px solid var(--md-card-border);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px var(--md-card-shadow);
+  overflow: hidden;
+  font-size: var(--md-font-size);
+  color: var(--md-text-primary);
+}
+
+/* --------------------------------------------------------------------------
+   顶部标题栏
+   -------------------------------------------------------------------------- */
+.md-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--md-popup-header-bg);
+  border-bottom: 1px solid var(--md-divider);
+  flex-shrink: 0;
+}
+
+.md-panel-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--md-text-primary);
+  margin: 0;
+}
+
+.md-panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* --------------------------------------------------------------------------
+   搜索输入区域
+   -------------------------------------------------------------------------- */
+.md-panel-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--md-card-bg);
+  border-bottom: 1px solid var(--md-divider);
+  flex-shrink: 0;
+}
+
+.md-panel-search-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--md-input-border);
+  border-radius: 6px;
+  background: var(--md-input-bg);
+  color: var(--md-text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.md-panel-search-input::placeholder {
+  color: var(--md-input-placeholder);
+}
+
+.md-panel-search-input:focus {
+  border-color: var(--md-input-border-focus);
+  box-shadow: 0 0 0 3px var(--md-accent-bg);
+}
+
+.md-panel-search-btn {
+  padding: 8px 14px;
+  border: 1px solid var(--md-button-border);
+  border-radius: 6px;
+  background: var(--md-button-bg);
+  color: var(--md-button-text);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.md-panel-search-btn:hover {
+  background: var(--md-button-bg-hover);
+}
+
+.md-panel-search-btn:active {
+  background: var(--md-accent-bg);
+}
+
+/* --------------------------------------------------------------------------
+   控制按钮区域
+   -------------------------------------------------------------------------- */
+.md-panel-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--md-card-bg);
+  border-bottom: 1px solid var(--md-divider);
+  flex-shrink: 0;
+}
+
+.md-panel-control-btn {
+  padding: 6px 10px;
+  border: 1px solid var(--md-button-border);
+  border-radius: 4px;
+  background: var(--md-button-bg);
+  color: var(--md-button-text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.md-panel-control-btn:hover {
+  background: var(--md-button-bg-hover);
+}
+
+.md-panel-control-btn.active {
+  background: var(--md-accent);
+  color: #ffffff;
+  border-color: var(--md-accent);
+}
+
+.md-panel-dict-select {
+  padding: 6px 10px;
+  border: 1px solid var(--md-input-border);
+  border-radius: 4px;
+  background: var(--md-input-bg);
+  color: var(--md-text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  min-width: 120px;
+}
+
+.md-panel-dict-select:focus {
+  border-color: var(--md-input-border-focus);
+  outline: none;
+}
+
+/* --------------------------------------------------------------------------
+   内容显示区域 - flex: 1 填充剩余空间
+   -------------------------------------------------------------------------- */
+.md-panel-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 14px;
+  background: var(--md-card-bg);
+}
+
+.md-panel-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.md-panel-content::-webkit-scrollbar-track {
+  background: var(--md-scrollbar-track);
+  border-radius: 4px;
+}
+
+.md-panel-content::-webkit-scrollbar-thumb {
+  background: var(--md-scrollbar-thumb);
+  border-radius: 4px;
+}
+
+.md-panel-content::-webkit-scrollbar-thumb:hover {
+  background: var(--md-scrollbar-thumb-hover);
+}
+
+/* 内容区域空状态 */
+.md-panel-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--md-text-muted);
+  text-align: center;
+  padding: 20px;
+}
+
+.md-panel-empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.md-panel-empty-text {
+  font-size: 14px;
+}
+
+/* --------------------------------------------------------------------------
+   底部区域（可选）
+   -------------------------------------------------------------------------- */
+.md-panel-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--md-popup-header-bg);
+  border-top: 1px solid var(--md-divider);
+  flex-shrink: 0;
+}
+
+.md-panel-footer-info {
+  font-size: 12px;
+  color: var(--md-text-muted);
+}
+
+.md-panel-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* --------------------------------------------------------------------------
+   热区样式（面板内可点击区域）
+   -------------------------------------------------------------------------- */
+.md-panel-hotzone {
+  cursor: pointer;
+  padding: 8px 12px;
+  margin: 4px 0;
+  border-radius: 6px;
+  background: var(--md-hotzone-bg);
+  transition: background 0.15s ease;
+}
+
+.md-panel-hotzone:hover {
+  background: var(--md-hotzone-hover);
+}
+
+.md-panel-hotzone:active {
+  background: var(--md-hotzone-active);
+}
+
+/* --------------------------------------------------------------------------
+   面板尺寸变体
+   -------------------------------------------------------------------------- */
+.md-panel-compact {
+  font-size: 13px;
+}
+
+.md-panel-compact .md-panel-header {
+  padding: 8px 12px;
+}
+
+.md-panel-compact .md-panel-search {
+  padding: 8px 12px;
+}
+
+.md-panel-compact .md-panel-content {
+  padding: 10px;
+}
+
+/* --------------------------------------------------------------------------
+   面板状态
+   -------------------------------------------------------------------------- */
+.md-panel-loading {
+  position: relative;
+}
+
+.md-panel-loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--md-overlay-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.md-panel-disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   居中模态弹窗样式（.md-modal）
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   遮罩层 - 半透明背景覆盖整个视口
+   -------------------------------------------------------------------------- */
+.md-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--md-overlay-bg);
+  z-index: 9999;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.md-modal-overlay.md-modal-visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* --------------------------------------------------------------------------
+   模态弹窗主容器
+   -------------------------------------------------------------------------- */
+.md-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.95);
+  width: 90%;
+  max-width: 480px;
+  background: var(--md-popup-bg);
+  border: 1px solid var(--md-popup-border);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px var(--md-card-shadow);
+  z-index: 10000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.md-modal.md-modal-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* --------------------------------------------------------------------------
+   弹窗内容容器 - 包裹实际内容
+   -------------------------------------------------------------------------- */
+.md-modal-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   弹窗头部 - 标题与关闭按钮
+   -------------------------------------------------------------------------- */
+.md-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: var(--md-popup-header-bg);
+  border-bottom: 1px solid var(--md-divider);
+  flex-shrink: 0;
+}
+
+.md-modal-title {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--md-text-primary);
+  margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+   关闭按钮
+   -------------------------------------------------------------------------- */
+.md-modal-close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--md-text-secondary);
+  font-size: 20px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.md-modal-close:hover {
+  background: var(--md-button-bg-hover);
+  color: var(--md-text-primary);
+}
+
+.md-modal-close:active {
+  background: var(--md-hotzone-active);
+}
+
+/* --------------------------------------------------------------------------
+   弹窗内容区域
+   -------------------------------------------------------------------------- */
+.md-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px;
+  background: var(--md-popup-bg);
+}
+
+.md-modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.md-modal-body::-webkit-scrollbar-track {
+  background: var(--md-scrollbar-track);
+  border-radius: 4px;
+}
+
+.md-modal-body::-webkit-scrollbar-thumb {
+  background: var(--md-scrollbar-thumb);
+  border-radius: 4px;
+}
+
+.md-modal-body::-webkit-scrollbar-thumb:hover {
+  background: var(--md-scrollbar-thumb-hover);
+}
+
+/* --------------------------------------------------------------------------
+   弹窗底部（可选）
+   -------------------------------------------------------------------------- */
+.md-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--md-popup-header-bg);
+  border-top: 1px solid var(--md-divider);
+  flex-shrink: 0;
+}
+
+/* --------------------------------------------------------------------------
+   高度变体 - 控制弹窗最大高度
+   -------------------------------------------------------------------------- */
+.md-modal-small {
+  max-height: 30vh;
+}
+
+.md-modal-medium {
+  max-height: 50vh;
+}
+
+.md-modal-large {
+  max-height: 70vh;
+}
+
+.md-modal-full {
+  max-height: 90vh;
+}
+
+/* --------------------------------------------------------------------------
+   隐藏状态 - 用于 JS 控制显示/隐藏
+   -------------------------------------------------------------------------- */
+.md-modal-hidden {
+  display: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   弹窗内嵌入面板时的适配
+   -------------------------------------------------------------------------- */
+.md-modal .md-panel {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* ==========================================================================
+   热区样式（边缘点击区域）
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   基础热区 - 绝对定位的边缘点击区域
+   -------------------------------------------------------------------------- */
+.md-hotzone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 24px;
+  z-index: 10;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: auto;
+  touch-action: manipulation;
+  /* 避免完全透明导致事件穿透 - 使用接近但不完全透明的背景 */
+  background: var(--md-hotzone-bg);
+  opacity: 0.01;
+  transition: opacity 0.2s ease, background 0.2s ease;
+}
+
+/* --------------------------------------------------------------------------
+   热区位置变体
+   -------------------------------------------------------------------------- */
+.md-hotzone-left {
+  left: 0;
+}
+
+.md-hotzone-right {
+  right: 0;
+}
+
+/* --------------------------------------------------------------------------
+   热区交互状态
+   -------------------------------------------------------------------------- */
+.md-hotzone:hover {
+  opacity: 1;
+  background: var(--md-hotzone-hover);
+  box-shadow: inset 2px 0 4px var(--md-hotzone-hover);
+}
+
+.md-hotzone:active {
+  opacity: 1;
+  background: var(--md-hotzone-active);
+  box-shadow: inset 2px 0 6px var(--md-hotzone-active);
+}
+
+/* 右侧热区的阴影方向调整 */
+.md-hotzone-right:hover {
+  box-shadow: inset -2px 0 4px var(--md-hotzone-hover);
+}
+
+.md-hotzone-right:active {
+  box-shadow: inset -2px 0 6px var(--md-hotzone-active);
+}
+
+/* ==========================================================================
+   字典计数器样式
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   计数器容器 - 显示当前索引/总数
+   -------------------------------------------------------------------------- */
+.md-counter {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  color: var(--md-text-muted);
+  white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* --------------------------------------------------------------------------
+   计数器子元素
+   -------------------------------------------------------------------------- */
+.md-counter-current {
+  color: var(--md-text-secondary);
+  font-weight: 500;
+}
+
+.md-counter-separator {
+  margin: 0 2px;
+  color: var(--md-text-muted);
+}
+
+.md-counter-total {
+  color: var(--md-text-muted);
+}
+
+/* --------------------------------------------------------------------------
+   计数器尺寸变体
+   -------------------------------------------------------------------------- */
+.md-counter-small {
+  font-size: 10px;
+}
+
+.md-counter-large {
+  font-size: 14px;
+}
