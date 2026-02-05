@@ -494,12 +494,132 @@
     lookupAndRender(word, dictionaryId, prefixHtml, { language: language });
   }
 
+  /**
+   * MD.UI - 用户界面模块
+   * 
+   * 支持两种显示模式：
+   * - 'embedded': 嵌入式模式，渲染到 #mdict-panel 容器内
+   * - 'modal': 弹窗模式，创建居中浮层（默认回退）
+   * 
+   * 容器检测逻辑：
+   * 1. 初始化时自动检测 #mdict-panel
+   * 2. 支持延迟设置容器（setContainer）
+   */
   window.MD.UI = {
+    // 显示模式: 'embedded' | 'modal' | null
+    mode: null,
+    
+    // 容器元素引用（嵌入式模式）
+    container: null,
+    
+    // 面板元素引用
+    panel: null,
+    
+    // 是否已初始化
+    _initialized: false,
+    
+    /**
+     * 初始化 UI 模块
+     * @param {Object} options - 初始化选项
+     * @param {string} options.containerId - 容器 ID（可选，默认 'mdict-panel'）
+     * @returns {boolean} 是否成功初始化
+     */
+    init: function(options) {
+      var opts = options || {};
+      var containerId = opts.containerId || 'mdict-panel';
+      
+      // 检测容器
+      this.detectContainer(containerId);
+      
+      this._initialized = true;
+      
+      // 输出初始化信息
+      if (window.console && window.console.log) {
+        console.log('[MD.UI] 初始化完成, mode=' + this.mode);
+      }
+      
+      return true;
+    },
+    
+    /**
+     * 检测容器是否存在
+     * @param {string} containerId - 容器 ID（可选，默认 'mdict-panel'）
+     * @returns {boolean} 是否检测到容器
+     */
+    detectContainer: function(containerId) {
+      var id = containerId || 'mdict-panel';
+      var container = document.getElementById(id);
+      
+      if (container) {
+        this.mode = 'embedded';
+        this.container = container;
+        return true;
+      } else {
+        this.mode = 'modal';
+        this.container = null;
+        return false;
+      }
+    },
+    
+    /**
+     * 延迟设置容器（支持容器后加载场景）
+     * @param {string} containerId - 容器 ID
+     * @returns {boolean} 是否成功设置
+     */
+    setContainer: function(containerId) {
+      if (!containerId) {
+        return false;
+      }
+      
+      var container = document.getElementById(containerId);
+      if (container) {
+        this.mode = 'embedded';
+        this.container = container;
+        
+        if (window.console && window.console.log) {
+          console.log('[MD.UI] 容器已设置, mode=embedded, containerId=' + containerId);
+        }
+        
+        return true;
+      }
+      
+      return false;
+    },
+    
+    /**
+     * 获取当前模式
+     * @returns {string} 'embedded' | 'modal'
+     */
+    getMode: function() {
+      // 如果未初始化，先执行检测
+      if (!this._initialized) {
+        this.detectContainer();
+      }
+      return this.mode;
+    },
+    
+    /**
+     * 判断是否为嵌入式模式
+     * @returns {boolean}
+     */
+    isEmbedded: function() {
+      return this.getMode() === 'embedded';
+    },
+    
+    /**
+     * 判断是否为弹窗模式
+     * @returns {boolean}
+     */
+    isModal: function() {
+      return this.getMode() === 'modal';
+    },
+    
+    // 原有方法
     showPopup: showPopup,
     hidePopup: hidePopup,
     showConfig: showConfig,
     showHistory: showHistory,
-    lookupFromToken: lookupFromToken,
+    lookupFromToken: lookupFromToken
   };
 
   window.MD.History = {
