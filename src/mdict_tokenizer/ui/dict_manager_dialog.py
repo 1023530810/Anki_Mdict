@@ -43,8 +43,11 @@ def _load_qt():
         "QLineEdit": qt.QLineEdit,
         "QMessageBox": qt.QMessageBox,
         "QPushButton": qt.QPushButton,
+        "QSettings": qt.QSettings,
         "QTableWidget": qt.QTableWidget,
         "QTableWidgetItem": qt.QTableWidgetItem,
+        "QTimer": qt.QTimer,
+        "Qt": qt.Qt,
         "QVBoxLayout": qt.QVBoxLayout,
         "QWidget": qt.QWidget,
     }
@@ -53,8 +56,12 @@ def _load_qt():
 class DictManagerDialog:
     """辞典管理对话框"""
 
+    _column_ratio_key = "mdict/dict_manager/column_ratios"
+    _default_column_ratios = (0.05, 0.15, 0.30, 0.50)
+
     def __init__(self, mw) -> None:
         qt = _load_qt()
+        self._qt = qt
         self._dialog = qt["QDialog"](mw)
         self.mw = mw
         self.media_dir = get_media_dir_from_mw(mw)
@@ -72,6 +79,14 @@ class DictManagerDialog:
 
         self.dict_table = qt["QTableWidget"](0, 4)
         self.dict_table.setHorizontalHeaderLabels(["启用", "辞典", "资源", "操作"])
+        self.dict_table.setWordWrap(False)
+        qt_core = qt["Qt"]
+        elide_right = (
+            qt_core.TextElideMode.ElideRight
+            if hasattr(qt_core, "TextElideMode")
+            else qt_core.ElideRight
+        )
+        self.dict_table.setTextElideMode(elide_right)
 
         item_view = qt["QAbstractItemView"]
         selection_mode = (
@@ -110,13 +125,15 @@ class DictManagerDialog:
         if hasattr(header, "setCascadingSectionResizes"):
             header.setCascadingSectionResizes(True)
         header_resize = qt["QHeaderView"]
-        stretch_mode = (
-            header_resize.ResizeMode.Stretch
+        interactive_mode = (
+            header_resize.ResizeMode.Interactive
             if hasattr(header_resize, "ResizeMode")
-            else header_resize.Stretch
+            else header_resize.Interactive
         )
         if hasattr(header, "setSectionResizeMode"):
-            header.setSectionResizeMode(stretch_mode)
+            header.setSectionResizeMode(interactive_mode)
+        if hasattr(header, "setStretchLastSection"):
+            header.setStretchLastSection(False)
         vertical_header = self.dict_table.verticalHeader()
         if vertical_header is not None:
             vertical_header.setVisible(False)
@@ -165,17 +182,91 @@ class DictManagerDialog:
         layout.addWidget(self.lookup_result)
         self._dialog.setLayout(layout)
 
-        self._qt = qt
         self._enable_boxes: dict[str, object] = {}
         self._staged_rows_by_language: dict[str, list[tuple[str, bool]]] = {}
         self._current_language = ""
         self._rebuilding_after_move = False
+        self._resizing_header = False
+
+        header.sectionResized.connect(self._on_header_section_resized)
+        self._schedule_apply_column_ratios()
 
         self.refresh_languages()
 
     def exec(self) -> int:
         """显示对话框"""
         return self._dialog.exec()
+
+    def _schedule_apply_column_ratios(self) -> None:
+        ratios = self._load_column_ratios()
+        self._qt["QTimer"].singleShot(0, lambda: self._apply_column_ratios(ratios))
+
+    def _load_column_ratios(self) -> list[float]:
+        settings = self._qt["QSettings"]("Anki", "MDict")
+        raw_value = settings.value(self._column_ratio_key)
+        ratios = self._coerce_ratios(raw_value)
+        if ratios is None:
+            ratios = list(self._default_column_ratios)
+        return ratios
+
+    def _coerce_ratios(self, value) -> list[float] | None:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            parts = [item.strip() for item in value.split(",") if item.strip()]
+        elif isinstance(value, (list, tuple)):
+            parts = list(value)
+        else:
+            return None
+        try:
+            ratios = [float(item) for item in parts]
+        except (TypeError, ValueError):
+            return None
+        if len(ratios) != 4 or any(ratio <= 0 for ratio in ratios):
+            return None
+        total = sum(ratios)
+        if total <= 0:
+            return None
+        return [ratio / total for ratio in ratios]
+
+    def _save_column_ratios(self, ratios: list[float]) -> None:
+        settings = self._qt["QSettings"]("Anki", "MDict")
+        settings.setValue(self._column_ratio_key, [f"{ratio:.6f}" for ratio in ratios])
+
+    def _apply_column_ratios(self, ratios: list[float]) -> None:
+        total_width = max(
+            self.dict_table.viewport().width(),
+            self.dict_table.width(),
+            max(self._dialog.width() - 40, 0),
+        )
+        if total_width <= 0:
+            return
+        min_width = 40
+        remaining = total_width
+        widths: list[int] = []
+        for index, ratio in enumerate(ratios):
+            if index == len(ratios) - 1:
+                width = max(min_width, remaining)
+            else:
+                width = max(min_width, int(total_width * ratio))
+                remaining -= width
+            widths.append(width)
+        self._resizing_header = True
+        try:
+            for index, width in enumerate(widths):
+                self.dict_table.setColumnWidth(index, width)
+        finally:
+            self._resizing_header = False
+
+    def _on_header_section_resized(self, *args) -> None:
+        if self._resizing_header:
+            return
+        widths = [self.dict_table.columnWidth(index) for index in range(4)]
+        total = sum(widths)
+        if total <= 0:
+            return
+        ratios = [width / total for width in widths]
+        self._save_column_ratios(ratios)
 
     def refresh_languages(self, selected: str | None = None) -> None:
         """刷新语言下拉"""
