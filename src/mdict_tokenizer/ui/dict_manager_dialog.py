@@ -110,6 +110,10 @@ class DictManagerDialog:
             table_model.rowsMoved.connect(self._on_rows_moved)
 
         header = self.dict_table.horizontalHeader()
+        if hasattr(header, "setCascadingSectionResizes"):
+            header.setCascadingSectionResizes(True)
+        if hasattr(header, "setStretchLastSection"):
+            header.setStretchLastSection(True)
         header_resize = qt["QHeaderView"]
         resize_mode = (
             header_resize.ResizeMode.Interactive
@@ -236,6 +240,7 @@ class DictManagerDialog:
                 dictionary.id in enabled_set,
             )
             self.dict_table.setCellWidget(row_index, 2, action_widget)
+            self.dict_table.resizeRowToContents(row_index)
 
         if not ordered:
             self.dict_table.setRowCount(0)

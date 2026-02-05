@@ -183,7 +183,9 @@
       var dictionaries = config.dictionaries || [];
       var candidates = getCandidatesByLanguage(config, language);
       var preferred = getDictionaryById(dictionaries, normalized.dictionaryId);
-      if (preferred) {
+      if (preferred && candidates.some(function (dict) {
+        return dict.id === preferred.id;
+      })) {
         candidates = [preferred].concat(
           candidates.filter(function (dict) {
             return dict.id !== preferred.id;
