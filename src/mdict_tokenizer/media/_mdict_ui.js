@@ -7,6 +7,137 @@
 
   var historyKey = "mdict_history";
   var popupEl = null;
+  var panelEl = null;
+  var modalEl = null;
+  var overlayEl = null;
+
+  function createPanelElements() {
+    var panel = document.createElement('div');
+    panel.className = 'md-panel';
+
+    var header = document.createElement('div');
+    header.className = 'md-panel-header';
+
+    var title = document.createElement('span');
+    title.className = 'md-panel-title';
+    title.textContent = '词典';
+
+    var searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.className = 'md-panel-search-input';
+    searchInput.placeholder = '搜索词条...';
+
+    var searchBtn = document.createElement('button');
+    searchBtn.type = 'button';
+    searchBtn.className = 'md-panel-search-btn';
+    searchBtn.textContent = '搜索';
+
+    var controls = document.createElement('div');
+    controls.className = 'md-panel-controls';
+
+    var dictSelectWrapper = document.createElement('div');
+    dictSelectWrapper.className = 'md-panel-dict-select-wrapper';
+
+    var dictSelect = document.createElement('select');
+    dictSelect.className = 'md-panel-dict-select';
+
+    var counter = document.createElement('span');
+    counter.className = 'md-panel-counter md-hidden';
+
+    var closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'md-panel-close';
+    closeBtn.textContent = '×';
+
+    header.appendChild(title);
+    header.appendChild(searchInput);
+    header.appendChild(searchBtn);
+    dictSelectWrapper.appendChild(dictSelect);
+    controls.appendChild(dictSelectWrapper);
+    controls.appendChild(counter);
+    controls.appendChild(closeBtn);
+    header.appendChild(controls);
+
+    var content = document.createElement('div');
+    content.className = 'md-panel-content';
+
+    var contentBody = document.createElement('div');
+    contentBody.className = 'md-panel-content-body';
+
+    var hotzoneLeft = document.createElement('div');
+    hotzoneLeft.className = 'md-hotzone md-hotzone-left';
+    hotzoneLeft.setAttribute('data-dir', 'prev');
+
+    var hotzoneRight = document.createElement('div');
+    hotzoneRight.className = 'md-hotzone md-hotzone-right';
+    hotzoneRight.setAttribute('data-dir', 'next');
+
+    content.appendChild(contentBody);
+    content.appendChild(hotzoneLeft);
+    content.appendChild(hotzoneRight);
+
+    panel.appendChild(header);
+    panel.appendChild(content);
+
+    return {
+      panel: panel,
+      header: header,
+      title: title,
+      searchInput: searchInput,
+      searchBtn: searchBtn,
+      controls: controls,
+      dictSelect: dictSelect,
+      counter: counter,
+      closeBtn: closeBtn,
+      content: content,
+      contentBody: contentBody,
+      hotzoneLeft: hotzoneLeft,
+      hotzoneRight: hotzoneRight
+    };
+  }
+
+  function ensurePanel() {
+    if (panelEl) {
+      return panelEl;
+    }
+
+    var mode = window.MD.UI.getMode();
+    var elements = createPanelElements();
+    var container;
+
+    if (mode === 'embedded') {
+      container = window.MD.UI.container;
+      if (container) {
+        elements.closeBtn.className = 'md-panel-close md-hidden';
+        container.appendChild(elements.panel);
+        panelEl = elements.panel;
+      } else {
+        if (window.console && window.console.warn) {
+          console.warn('[MD.UI] 嵌入式容器不存在，回退到弹窗模式');
+        }
+        window.MD.UI.mode = 'modal';
+        return ensurePanel();
+      }
+    } else {
+      overlayEl = document.createElement('div');
+      overlayEl.className = 'md-modal-overlay md-modal-hidden';
+
+      modalEl = document.createElement('div');
+      modalEl.className = 'md-modal md-modal-medium md-modal-hidden';
+
+      modalEl.appendChild(elements.panel);
+
+      document.body.appendChild(overlayEl);
+      document.body.appendChild(modalEl);
+
+      panelEl = elements.panel;
+    }
+
+    window.MD.UI.panel = panelEl;
+    window.MD.UI.elements = elements;
+
+    return panelEl;
+  }
 
   function getHistory() {
     var raw = localStorage.getItem(historyKey);
@@ -614,7 +745,7 @@
       return this.getMode() === 'modal';
     },
     
-    // 原有方法
+    ensurePanel: ensurePanel,
     showPopup: showPopup,
     hidePopup: hidePopup,
     showConfig: showConfig,
