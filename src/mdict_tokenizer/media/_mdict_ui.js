@@ -159,6 +159,7 @@
     window.MD.UI.elements = elements;
 
     bindDropdownEvents(elements);
+    bindHotzoneEvents(elements);
 
     return panelEl;
   }
@@ -226,6 +227,7 @@
     }
 
     closeDropdown();
+    updateCounter();
 
     if (window.MD && typeof window.MD.emit === 'function') {
       window.MD.emit('md:dictChange', {
@@ -381,6 +383,179 @@
         }
       }
     });
+  }
+
+  /**
+   * 获取所有可用字典列表
+   * @returns {Array} 字典数组
+   */
+  function getDictionaries() {
+    if (window.MD && window.MD.Dictionary && window.MD.Dictionary.getDictionaries) {
+      return window.MD.Dictionary.getDictionaries() || [];
+    }
+    return [];
+  }
+
+  /**
+   * 获取当前字典在列表中的索引
+   * @returns {number} 索引值，未找到返回 0
+   */
+  function getCurrentDictionaryIndex() {
+    var dictionaries = getDictionaries();
+    var currentDictId = window.MD.UI.currentDictId || '';
+    var i;
+
+    if (!dictionaries.length) {
+      return 0;
+    }
+
+    for (i = 0; i < dictionaries.length; i++) {
+      if (dictionaries[i].id === currentDictId) {
+        return i;
+      }
+    }
+    return 0;
+  }
+
+  /**
+   * 更新字典计数器显示
+   * 格式："N/M"（当前/总数），从 1 开始计数
+   * 只有一个或没有字典时隐藏计数器
+   */
+  function updateCounter() {
+    var elements = window.MD.UI.elements;
+    var counterEl;
+    var dicts;
+    var currentIndex;
+    var currentNum;
+    var totalNum;
+
+    if (!elements) {
+      return;
+    }
+
+    counterEl = elements.counter;
+    if (!counterEl) {
+      return;
+    }
+
+    // 获取字典列表
+    dicts = getDictionaries();
+
+    // 只有一个或没有字典时隐藏计数器
+    if (!dicts || dicts.length <= 1) {
+      counterEl.classList.add('md-hidden');
+      return;
+    }
+
+    // 显示计数器
+    counterEl.classList.remove('md-hidden');
+
+    // 计算当前索引（从 1 开始显示）
+    currentIndex = getCurrentDictionaryIndex();
+    currentNum = currentIndex + 1;
+    totalNum = dicts.length;
+
+    // 更新计数器文本："N/M"
+    counterEl.textContent = String(currentNum) + '/' + String(totalNum);
+  }
+
+  /**
+   * 刷新查词结果
+   */
+  function refreshLookup() {
+    var currentWord = window.MD.UI.currentWord;
+    var currentDictId = window.MD.UI.currentDictId;
+
+    if (currentWord) {
+      lookupAndRender(currentWord, currentDictId || null, null);
+    }
+  }
+
+  /**
+   * 切换到上一个字典
+   */
+  function switchToPrevDictionary() {
+    var dictionaries = getDictionaries();
+    var currentIndex;
+    var prevIndex;
+    var prevDict;
+
+    if (!dictionaries || dictionaries.length === 0) {
+      return;
+    }
+
+    currentIndex = getCurrentDictionaryIndex();
+    prevIndex = currentIndex - 1;
+    if (prevIndex < 0) {
+      prevIndex = dictionaries.length - 1; // 循环到最后一个
+    }
+
+    prevDict = dictionaries[prevIndex];
+    if (prevDict) {
+      selectDictionary(prevDict.id, prevDict.name);
+      window.MD.UI.currentDictId = prevDict.id;
+      refreshLookup();
+    }
+  }
+
+  /**
+   * 切换到下一个字典
+   */
+  function switchToNextDictionary() {
+    var dictionaries = getDictionaries();
+    var currentIndex;
+    var nextIndex;
+    var nextDict;
+
+    if (!dictionaries || dictionaries.length === 0) {
+      return;
+    }
+
+    currentIndex = getCurrentDictionaryIndex();
+    nextIndex = currentIndex + 1;
+    if (nextIndex >= dictionaries.length) {
+      nextIndex = 0; // 循环到第一个
+    }
+
+    nextDict = dictionaries[nextIndex];
+    if (nextDict) {
+      selectDictionary(nextDict.id, nextDict.name);
+      window.MD.UI.currentDictId = nextDict.id;
+      refreshLookup();
+    }
+  }
+
+  /**
+   * 绑定热区点击事件
+   * @param {Object} elements - DOM 元素集合
+   */
+  function bindHotzoneEvents(elements) {
+    var hotzoneLeft;
+    var hotzoneRight;
+
+    if (!elements) {
+      return;
+    }
+
+    hotzoneLeft = elements.hotzoneLeft;
+    hotzoneRight = elements.hotzoneRight;
+
+    if (hotzoneLeft) {
+      hotzoneLeft.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        switchToPrevDictionary();
+      });
+    }
+
+    if (hotzoneRight) {
+      hotzoneRight.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        switchToNextDictionary();
+      });
+    }
   }
 
   function getHistory() {
@@ -555,6 +730,12 @@
     var dictOptionIndex = 0;
     var lastLanguage = null;
     content.innerHTML = "<div class=\"md-loading\">加载中...</div>";
+    
+    window.MD.UI.currentWord = word;
+    if (dictionaryId) {
+      window.MD.UI.currentDictId = dictionaryId;
+    }
+    
     var lookupOptions = options || {};
     if (!lookupOptions.language) {
       lastLanguage = getLastLookupLanguage();
@@ -572,6 +753,11 @@
         }
         return;
       }
+      
+      if (result.dictionaryId) {
+        window.MD.UI.currentDictId = result.dictionaryId;
+      }
+      
       var html = fixCssReferences(result.definition, result.dictionaryId);
       var fullHtml = prefixHtml ? prefixHtml + html : html;
       content.innerHTML = "<div class=\"mdict-" + result.dictionaryId + "\">" + fullHtml + "</div>";
@@ -892,6 +1078,12 @@
     
     // 是否已初始化
     _initialized: false,
+    
+    // 当前选中的字典 ID
+    currentDictId: '',
+    
+    // 当前查询的词
+    currentWord: '',
     
     /**
      * 初始化 UI 模块
