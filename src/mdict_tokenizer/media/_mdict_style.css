@@ -1,6 +1,168 @@
+/* ==========================================================================
+   MDict 主题变量系统
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   亮色模式变量（默认）
+   -------------------------------------------------------------------------- */
 :root {
+  /* 基础字体 */
   --md-font-size: 16px;
+
+  /* 页面背景 */
+  --md-page-bg: #f5f5f5;
+  --md-page-bg-secondary: #e8e8e8;
+
+  /* 卡片/面板 */
+  --md-card-bg: #ffffff;
+  --md-card-border: #dddddd;
+  --md-card-shadow: rgba(0, 0, 0, 0.1);
+
+  /* 文字颜色 */
+  --md-text-primary: #333333;
+  --md-text-secondary: #666666;
+  --md-text-muted: #999999;
+
+  /* 交互元素 - 强调色 */
+  --md-accent: #2376b7;
+  --md-accent-hover: #1a5a8a;
+  --md-accent-bg: #e3f2fd;
+
+  /* 按钮 */
+  --md-button-bg: #ffffff;
+  --md-button-bg-hover: #f0f0f0;
+  --md-button-border: #cccccc;
+  --md-button-text: #333333;
+
+  /* 输入框 */
+  --md-input-bg: #ffffff;
+  --md-input-border: #cccccc;
+  --md-input-border-focus: #2376b7;
+  --md-input-placeholder: #aaaaaa;
+
+  /* 状态颜色 */
+  --md-success: #28a745;
+  --md-success-bg: #d4edda;
+  --md-warning: #ffc107;
+  --md-warning-bg: #fff3cd;
+  --md-error: #dc3545;
+  --md-error-bg: #f8d7da;
+  --md-info: #17a2b8;
+  --md-info-bg: #d1ecf1;
+
+  /* 热区（可点击区域） */
+  --md-hotzone-bg: transparent;
+  --md-hotzone-hover: rgba(0, 0, 0, 0.05);
+  --md-hotzone-active: rgba(0, 0, 0, 0.1);
+
+  /* 下拉菜单 */
+  --md-dropdown-bg: #ffffff;
+  --md-dropdown-border: #dddddd;
+  --md-dropdown-hover: #f0f0f0;
+  --md-dropdown-shadow: rgba(0, 0, 0, 0.15);
+
+  /* 遮罩层 */
+  --md-overlay-bg: rgba(0, 0, 0, 0.5);
+
+  /* 分隔线 */
+  --md-divider: #eeeeee;
+  --md-divider-strong: #dddddd;
+
+  /* 弹出层/面板 */
+  --md-popup-bg: #ffffff;
+  --md-popup-header-bg: #f7f7f7;
+  --md-popup-border: #dddddd;
+
+  /* Token 高亮 */
+  --md-token-highlight: rgba(255, 235, 59, 0.35);
+
+  /* 滚动条 */
+  --md-scrollbar-track: #f0f0f0;
+  --md-scrollbar-thumb: #cccccc;
+  --md-scrollbar-thumb-hover: #aaaaaa;
 }
+
+/* --------------------------------------------------------------------------
+   暗色模式变量 - Anki 使用 .nightMode 类
+   -------------------------------------------------------------------------- */
+.nightMode,
+:root[data-theme="dark"] {
+  /* 页面背景 */
+  --md-page-bg: #1a1a1a;
+  --md-page-bg-secondary: #252525;
+
+  /* 卡片/面板 */
+  --md-card-bg: #2d2d2d;
+  --md-card-border: #404040;
+  --md-card-shadow: rgba(0, 0, 0, 0.3);
+
+  /* 文字颜色 */
+  --md-text-primary: #e0e0e0;
+  --md-text-secondary: #b0b0b0;
+  --md-text-muted: #808080;
+
+  /* 交互元素 - 强调色 */
+  --md-accent: #66a9c9;
+  --md-accent-hover: #8bc4dc;
+  --md-accent-bg: #1e3a4c;
+
+  /* 按钮 */
+  --md-button-bg: #3d3d3d;
+  --md-button-bg-hover: #4d4d4d;
+  --md-button-border: #555555;
+  --md-button-text: #e0e0e0;
+
+  /* 输入框 */
+  --md-input-bg: #3d3d3d;
+  --md-input-border: #555555;
+  --md-input-border-focus: #66a9c9;
+  --md-input-placeholder: #777777;
+
+  /* 状态颜色 */
+  --md-success: #5cb85c;
+  --md-success-bg: #1e3d1e;
+  --md-warning: #f0ad4e;
+  --md-warning-bg: #4d3d1a;
+  --md-error: #d9534f;
+  --md-error-bg: #4d1e1e;
+  --md-info: #5bc0de;
+  --md-info-bg: #1e3d4d;
+
+  /* 热区（可点击区域） */
+  --md-hotzone-bg: transparent;
+  --md-hotzone-hover: rgba(255, 255, 255, 0.05);
+  --md-hotzone-active: rgba(255, 255, 255, 0.1);
+
+  /* 下拉菜单 */
+  --md-dropdown-bg: #2d2d2d;
+  --md-dropdown-border: #404040;
+  --md-dropdown-hover: #3d3d3d;
+  --md-dropdown-shadow: rgba(0, 0, 0, 0.4);
+
+  /* 遮罩层 */
+  --md-overlay-bg: rgba(0, 0, 0, 0.7);
+
+  /* 分隔线 */
+  --md-divider: #404040;
+  --md-divider-strong: #555555;
+
+  /* 弹出层/面板 */
+  --md-popup-bg: #2d2d2d;
+  --md-popup-header-bg: #3d3d3d;
+  --md-popup-border: #404040;
+
+  /* Token 高亮 */
+  --md-token-highlight: rgba(255, 193, 7, 0.3);
+
+  /* 滚动条 */
+  --md-scrollbar-track: #2d2d2d;
+  --md-scrollbar-thumb: #555555;
+  --md-scrollbar-thumb-hover: #666666;
+}
+
+/* ==========================================================================
+   组件样式
+   ========================================================================== */
 
 .md-token {
   cursor: pointer;
