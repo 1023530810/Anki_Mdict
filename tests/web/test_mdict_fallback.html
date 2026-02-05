@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mdict Fallback Modal Test</title>
+  <base href="../../src/mdict_tokenizer/media/">
+  <link rel="stylesheet" href="_mdict_style.css">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px;
+      line-height: 1.6;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .description {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+    .test-section {
+      margin: 30px 0;
+      padding: 20px;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      background: #fafafa;
+    }
+    .test-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 15px;
+      color: #333;
+    }
+    .input-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    button {
+      padding: 10px 20px;
+      background: #1976d2;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    button:hover {
+      background: #1565c0;
+    }
+    button:active {
+      background: #0d47a1;
+    }
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .status.ready {
+      background: #c8e6c9;
+      color: #2e7d32;
+      border: 1px solid #81c784;
+    }
+    .status.error {
+      background: #ffcdd2;
+      color: #c62828;
+      border: 1px solid #ef5350;
+    }
+    .warning-box {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      color: #856404;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    .md-token {
+      background: #e3f2fd;
+      color: #1565c0;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 3px;
+      margin: 0 2px;
+      display: inline-block;
+    }
+    .md-token:hover {
+      background: #bbdefb;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Mdict Fallback Modal Test</h1>
+    <p class="description">Tests Mdict in fallback mode when #mdict-panel container is NOT present.</p>
+
+    <div class="warning-box">
+      ⚠️ <strong>Note:</strong> This page intentionally does NOT include a #mdict-panel container. 
+      Mdict should fall back to modal/popup mode for displaying results.
+    </div>
+
+    <!-- Fallback Modal Mode Test -->
+    <div class="test-section">
+      <div class="test-title">📱 Fallback Modal Mode</div>
+      <p>This test verifies that Mdict initializes correctly and falls back to modal mode when #mdict-panel is absent.</p>
+      
+      <div class="input-group">
+        <input type="text" id="lookup-word" placeholder="Enter a word to look up (e.g., 'hello', '今日')" />
+        <button id="lookup-btn">Look Up</button>
+      </div>
+
+      <div id="status" class="status"></div>
+    </div>
+  </div>
+
+  <!-- Load Mdict scripts in correct order -->
+  <script src="_mdict_config.js"></script>
+  <script src="_mdict_tokenizer.js"></script>
+  <script src="_mdict_dictionary.js"></script>
+  <script src="_mdict_ui.js"></script>
+  <script src="_mdict_main.js"></script>
+
+  <script>
+    (function () {
+      "use strict";
+
+      var statusEl = document.getElementById("status");
+      var lookupWordInput = document.getElementById("lookup-word");
+      var lookupBtn = document.getElementById("lookup-btn");
+
+      function updateStatus(message, isError) {
+        statusEl.textContent = message;
+        statusEl.className = "status " + (isError ? "error" : "ready");
+      }
+
+      function onMdictReady() {
+        updateStatus("✅ Mdict ready! No embedded container detected - fallback mode active. Try looking up a word.");
+        
+        lookupBtn.addEventListener("click", function () {
+          var word = (lookupWordInput.value || "").trim();
+          if (!word) {
+            updateStatus("⚠️ Please enter a word to look up.", true);
+            return;
+          }
+
+          if (!window.MD || !window.MD.API) {
+            updateStatus("❌ Mdict API not available.", true);
+            return;
+          }
+
+          updateStatus("🔍 Looking up: " + word + "...");
+          
+          window.MD.API.lookup(word, { requestId: Date.now() })
+            .then(function (result) {
+              if (result && result.entries && result.entries.length > 0) {
+                updateStatus("✅ Found " + result.entries.length + " result(s) - should display in modal");
+                console.log("Lookup result:", result);
+              } else {
+                updateStatus("⚠️ No results found for: " + word, true);
+              }
+            })
+            .catch(function (error) {
+              updateStatus("❌ Lookup error: " + error.message, true);
+              console.error("Lookup error:", error);
+            });
+        });
+
+        lookupWordInput.addEventListener("keypress", function (e) {
+          if (e.key === "Enter") {
+            lookupBtn.click();
+          }
+        });
+      }
+
+      function onMdictError(error) {
+        updateStatus("❌ Mdict initialization error: " + error.message, true);
+        console.error("Mdict error:", error);
+      }
+
+      document.addEventListener("md:ready", onMdictReady);
+      document.addEventListener("md:error", onMdictError);
+
+      setTimeout(function () {
+        if (!window.MD || !window.MD.API) {
+          updateStatus("❌ Mdict failed to initialize (timeout)", true);
+        }
+      }, 5000);
+
+      updateStatus("⏳ Initializing Mdict...");
+    })();
+  </script>
+</body>
+</html>
