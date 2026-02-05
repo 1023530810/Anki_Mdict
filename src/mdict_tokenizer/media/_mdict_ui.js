@@ -38,8 +38,27 @@
     var dictSelectWrapper = document.createElement('div');
     dictSelectWrapper.className = 'md-panel-dict-select-wrapper';
 
-    var dictSelect = document.createElement('select');
+    var dictSelect = document.createElement('button');
+    dictSelect.type = 'button';
     dictSelect.className = 'md-panel-dict-select';
+    dictSelect.setAttribute('aria-haspopup', 'listbox');
+    dictSelect.setAttribute('aria-expanded', 'false');
+    dictSelect.setAttribute('tabindex', '0');
+
+    var dictSelectText = document.createElement('span');
+    dictSelectText.className = 'md-panel-dict-select-text';
+    dictSelectText.textContent = '全部辞典';
+
+    var dictSelectArrow = document.createElement('span');
+    dictSelectArrow.className = 'md-panel-dict-select-arrow';
+    dictSelectArrow.textContent = '▼';
+
+    dictSelect.appendChild(dictSelectText);
+    dictSelect.appendChild(dictSelectArrow);
+
+    var dictDropdown = document.createElement('div');
+    dictDropdown.className = 'md-dropdown md-dropdown-hidden';
+    dictDropdown.setAttribute('role', 'listbox');
 
     var counter = document.createElement('span');
     counter.className = 'md-panel-counter md-hidden';
@@ -53,6 +72,7 @@
     header.appendChild(searchInput);
     header.appendChild(searchBtn);
     dictSelectWrapper.appendChild(dictSelect);
+    dictSelectWrapper.appendChild(dictDropdown);
     controls.appendChild(dictSelectWrapper);
     controls.appendChild(counter);
     controls.appendChild(closeBtn);
@@ -87,6 +107,8 @@
       searchBtn: searchBtn,
       controls: controls,
       dictSelect: dictSelect,
+      dictSelectText: dictSelectText,
+      dictDropdown: dictDropdown,
       counter: counter,
       closeBtn: closeBtn,
       content: content,
@@ -136,7 +158,229 @@
     window.MD.UI.panel = panelEl;
     window.MD.UI.elements = elements;
 
+    bindDropdownEvents(elements);
+
     return panelEl;
+  }
+
+  var dropdownState = {
+    isOpen: false,
+    selectedDictId: '',
+    selectedDictName: '全部辞典'
+  };
+
+  function openDropdown() {
+    var elements = window.MD.UI.elements;
+    if (!elements || !elements.dictDropdown || !elements.dictSelect) {
+      return;
+    }
+    elements.dictDropdown.classList.remove('md-dropdown-hidden');
+    elements.dictDropdown.classList.add('md-dropdown-visible');
+    elements.dictSelect.setAttribute('aria-expanded', 'true');
+    dropdownState.isOpen = true;
+  }
+
+  function closeDropdown() {
+    var elements = window.MD.UI.elements;
+    if (!elements || !elements.dictDropdown || !elements.dictSelect) {
+      return;
+    }
+    elements.dictDropdown.classList.add('md-dropdown-hidden');
+    elements.dictDropdown.classList.remove('md-dropdown-visible');
+    elements.dictSelect.setAttribute('aria-expanded', 'false');
+    dropdownState.isOpen = false;
+  }
+
+  function toggleDropdown() {
+    if (dropdownState.isOpen) {
+      closeDropdown();
+    } else {
+      openDropdown();
+    }
+  }
+
+  function selectDictionary(dictId, dictName) {
+    var elements = window.MD.UI.elements;
+    var options;
+    var i;
+    var option;
+
+    if (!elements || !elements.dictSelectText) {
+      return;
+    }
+
+    dropdownState.selectedDictId = dictId || '';
+    dropdownState.selectedDictName = dictName || '全部辞典';
+    elements.dictSelectText.textContent = dropdownState.selectedDictName;
+
+    if (elements.dictDropdown) {
+      options = elements.dictDropdown.querySelectorAll('.md-dropdown-option');
+      for (i = 0; i < options.length; i++) {
+        option = options[i];
+        if (option.getAttribute('data-dict-id') === dictId) {
+          option.classList.add('md-dropdown-option-active');
+        } else {
+          option.classList.remove('md-dropdown-option-active');
+        }
+      }
+    }
+
+    closeDropdown();
+
+    if (window.MD && typeof window.MD.emit === 'function') {
+      window.MD.emit('md:dictChange', {
+        dictId: dictId,
+        dictName: dictName
+      });
+    }
+  }
+
+  function updateDropdownOptions(dropdownEl) {
+    var dicts;
+    var allOption;
+    var i;
+    var dict;
+    var option;
+
+    if (!dropdownEl) {
+      return;
+    }
+    dropdownEl.innerHTML = '';
+
+    dicts = [];
+    if (window.MD && window.MD.Dictionary && window.MD.Dictionary.getDictionaries) {
+      dicts = window.MD.Dictionary.getDictionaries();
+    }
+
+    allOption = document.createElement('button');
+    allOption.type = 'button';
+    allOption.className = 'md-dropdown-option';
+    if (dropdownState.selectedDictId === '') {
+      allOption.className += ' md-dropdown-option-active';
+    }
+    allOption.setAttribute('data-dict-id', '');
+    allOption.setAttribute('role', 'option');
+    allOption.textContent = '全部辞典';
+    dropdownEl.appendChild(allOption);
+
+    for (i = 0; i < dicts.length; i++) {
+      dict = dicts[i];
+      option = document.createElement('button');
+      option.type = 'button';
+      option.className = 'md-dropdown-option';
+      if (dropdownState.selectedDictId === dict.id) {
+        option.className += ' md-dropdown-option-active';
+      }
+      option.setAttribute('data-dict-id', dict.id);
+      option.setAttribute('role', 'option');
+      option.textContent = dict.name;
+      dropdownEl.appendChild(option);
+    }
+  }
+
+  function bindDropdownEvents(elements) {
+    var selectBtn;
+    var menu;
+    var wrapper;
+
+    if (!elements || !elements.dictSelect || !elements.dictDropdown) {
+      return;
+    }
+
+    selectBtn = elements.dictSelect;
+    menu = elements.dictDropdown;
+    wrapper = selectBtn.parentElement;
+
+    updateDropdownOptions(menu);
+
+    selectBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (!dropdownState.isOpen) {
+        updateDropdownOptions(menu);
+      }
+      toggleDropdown();
+    });
+
+    menu.addEventListener('click', function(e) {
+      var target = e.target;
+      var optionBtn = null;
+      var dictId;
+      var dictName;
+
+      if (!target) {
+        return;
+      }
+      if (target.classList && target.classList.contains('md-dropdown-option')) {
+        optionBtn = target;
+      } else if (target.parentElement && target.parentElement.classList && 
+                 target.parentElement.classList.contains('md-dropdown-option')) {
+        optionBtn = target.parentElement;
+      }
+      if (!optionBtn) {
+        return;
+      }
+      e.stopPropagation();
+      dictId = optionBtn.getAttribute('data-dict-id') || '';
+      dictName = optionBtn.textContent || '全部辞典';
+      selectDictionary(dictId, dictName);
+    });
+
+    document.addEventListener('click', function(e) {
+      var target;
+      var isInsideWrapper;
+
+      if (!dropdownState.isOpen) {
+        return;
+      }
+      target = e.target;
+      if (!target) {
+        closeDropdown();
+        return;
+      }
+      isInsideWrapper = wrapper && wrapper.contains(target);
+      if (!isInsideWrapper) {
+        closeDropdown();
+      }
+    });
+
+    selectBtn.addEventListener('keydown', function(e) {
+      var key = e.key || e.keyCode;
+
+      if (key === 'Enter' || key === 13 || key === ' ' || key === 32) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!dropdownState.isOpen) {
+          updateDropdownOptions(menu);
+        }
+        toggleDropdown();
+      }
+      if (key === 'Escape' || key === 27) {
+        e.preventDefault();
+        closeDropdown();
+      }
+    });
+
+    menu.addEventListener('keydown', function(e) {
+      var key = e.key || e.keyCode;
+      var focused;
+      var dictId;
+      var dictName;
+
+      if (key === 'Escape' || key === 27) {
+        e.preventDefault();
+        closeDropdown();
+        selectBtn.focus();
+      }
+      if (key === 'Enter' || key === 13) {
+        focused = document.activeElement;
+        if (focused && focused.classList && focused.classList.contains('md-dropdown-option')) {
+          e.preventDefault();
+          dictId = focused.getAttribute('data-dict-id') || '';
+          dictName = focused.textContent || '全部辞典';
+          selectDictionary(dictId, dictName);
+        }
+      }
+    });
   }
 
   function getHistory() {
