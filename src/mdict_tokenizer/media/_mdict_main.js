@@ -5,6 +5,10 @@
     window.MD = {};
   }
 
+  if (!window.MD._persistent) {
+    window.MD._persistent = {};
+  }
+
   function fetchJson(path) {
     if (window.fetch) {
       return fetch(path).then(function (response) {
@@ -79,7 +83,28 @@
     var autoTokenize = opts.autoTokenize !== false;
     var targetContainer = opts.targetContainer || null;
 
-    return fetchJson(configPath)
+    var configPromise;
+    var cachedConfig = window.MD._persistent.configCache;
+    if (cachedConfig) {
+      configPromise = fetchJson(configPath)
+        .then(function (freshConfig) {
+          if (freshConfig && freshConfig.version && cachedConfig.version && freshConfig.version === cachedConfig.version) {
+            return cachedConfig;
+          }
+          window.MD._persistent.configCache = freshConfig || {};
+          return window.MD._persistent.configCache;
+        })
+        .catch(function () {
+          return cachedConfig;
+        });
+    } else {
+      configPromise = fetchJson(configPath).then(function (config) {
+        window.MD._persistent.configCache = config || {};
+        return window.MD._persistent.configCache;
+      });
+    }
+
+    return configPromise
       .then(function (config) {
         window.MD.State = {
           config: config || {},
