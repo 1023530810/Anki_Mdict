@@ -5,8 +5,10 @@
     window.MD = {};
   }
 
-  var indexCache = {};
-  var shardCache = {};
+  if (!window.MD._persistent) { window.MD._persistent = {}; }
+
+  var indexCache = window.MD._persistent.indexCache = window.MD._persistent.indexCache || {};
+  var shardCache = window.MD._persistent.shardCache = window.MD._persistent.shardCache || {};
 
   function fetchJson(url) {
     if (window.fetch) {
