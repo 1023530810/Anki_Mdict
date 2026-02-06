@@ -126,8 +126,23 @@
   }
 
   function ensurePanel() {
-    if (panelEl) {
+    // Case 1: panelEl exists AND is still in the DOM → reuse
+    if (panelEl && document.contains(panelEl)) {
       return panelEl;
+    }
+
+    // Case 2: panelEl exists but NOT in DOM → dangling reference, clean up everything
+    if (panelEl && !document.contains(panelEl)) {
+      panelEl = null;
+      modalEl = null;
+      overlayEl = null;
+      window.MD._persistent.uiState.panelEl = null;
+      window.MD._persistent.uiState.modalEl = null;
+      window.MD._persistent.uiState.overlayEl = null;
+      if (window.MD.UI) {
+        window.MD.UI.panel = null;
+        window.MD.UI.elements = null;
+      }
     }
 
     var mode = window.MD.UI.getMode();
