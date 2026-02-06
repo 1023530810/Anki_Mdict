@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Mdict Persistence Test</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      background: #fafafa;
+    }
+    h1 {
+      color: #333;
+      border-bottom: 2px solid #333;
+      padding-bottom: 10px;
+    }
+    .controls {
+      margin: 20px 0;
+      padding: 15px;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .controls button {
+      margin-right: 10px;
+      padding: 8px 16px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    .controls button:hover {
+      background: #0056b3;
+    }
+    .controls button:active {
+      background: #004085;
+    }
+    #card-content {
+      border: 2px solid #ccc;
+      padding: 15px;
+      min-height: 80px;
+      margin: 15px 0;
+      background: #fff;
+      border-radius: 4px;
+    }
+    .results {
+      background: #f5f5f5;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-size: 12px;
+      line-height: 1.6;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+    .pass {
+      color: #28a745;
+      font-weight: bold;
+    }
+    .fail {
+      color: #dc3545;
+      font-weight: bold;
+    }
+    .info {
+      color: #0c5460;
+      background: #d1ecf1;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+    .section-title {
+      font-weight: bold;
+      margin-top: 10px;
+      margin-bottom: 5px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <h1>Mdict Persistence Verification Test</h1>
+  
+  <div class="info">
+    This page tests the persistence layer by simulating Anki card switching and verifying cache retention.
+  </div>
+
+  <div class="controls">
+    <button id="btn-card-a">Card A (Japanese)</button>
+    <button id="btn-card-b">Card B (English)</button>
+    <button id="btn-auto-test">Run Auto Test</button>
+    <button id="btn-clear-results">Clear Results</button>
+  </div>
+
+  <div class="section-title">Card Content Area:</div>
+  <div id="card-content">
+    <div class="mdict-field" data-mdict-field="Expression" data-mdict-lang="ja">テスト</div>
+  </div>
+
+  <div class="section-title">Verification Results:</div>
+  <div class="results" id="results">
+    Waiting for test execution...
+  </div>
+
+  <script src="../../src/mdict_tokenizer/media/_mdict_config.js"></script>
+  <script src="../../src/mdict_tokenizer/media/_mdict_tokenizer.js"></script>
+  <script src="../../src/mdict_tokenizer/media/_mdict_dictionary.js"></script>
+  <script src="../../src/mdict_tokenizer/media/_mdict_main.js"></script>
+  <script src="../../src/mdict_tokenizer/media/_mdict_ui.js"></script>
+
+  <script>
+    // Test state
+    var testState = {
+      cardAContent: '<div class="mdict-field" data-mdict-field="Expression" data-mdict-lang="ja">テスト</div>',
+      cardBContent: '<div class="mdict-field" data-mdict-field="Expression" data-mdict-lang="en">test</div>',
+      initTimes: [],
+      currentCard: 'A'
+    };
+
+    function formatResults(data) {
+      var output = '';
+      var persistent = null;
+      var tokenizerKeys = null;
+      var indexKeys = null;
+      var langKeys = null;
+      
+      output += '=== PERSISTENCE STATE ===\n\n';
+      
+      if (!window.MD || !window.MD._persistent) {
+        output += 'ERROR: window.MD._persistent not available\n';
+        return output;
+      }
+
+      persistent = window.MD._persistent;
+
+      output += 'Tokenizer Cache:\n';
+      if (persistent.tokenizerCache) {
+        tokenizerKeys = Object.keys(persistent.tokenizerCache);
+        output += '  Keys: ' + tokenizerKeys.length + ' (' + tokenizerKeys.join(', ') + ')\n';
+      } else {
+        output += '  Not initialized\n';
+      }
+
+      output += '\nIndex Cache:\n';
+      if (persistent.indexCache) {
+        indexKeys = Object.keys(persistent.indexCache);
+        output += '  Keys: ' + indexKeys.length + ' (' + indexKeys.join(', ') + ')\n';
+      } else {
+        output += '  Not initialized\n';
+      }
+
+      output += '\nConfig Cache:\n';
+      if (persistent.configCache) {
+        output += '  Status: EXISTS\n';
+        output += '  Type: ' + typeof persistent.configCache + '\n';
+      } else {
+        output += '  Status: NOT INITIALIZED\n';
+      }
+
+      output += '\nLoaded Languages:\n';
+      if (persistent.loadedLanguages) {
+        langKeys = Object.keys(persistent.loadedLanguages);
+        output += '  Keys: ' + langKeys.length + ' (' + langKeys.join(', ') + ')\n';
+      } else {
+        output += '  Not initialized\n';
+      }
+
+      output += '\nStats:\n';
+      if (persistent.stats) {
+        output += '  initCount: ' + (persistent.stats.initCount || 0) + '\n';
+        output += '  tokenizeCount: ' + (persistent.stats.tokenizeCount || 0) + '\n';
+        output += '  cacheHits: ' + (persistent.stats.cacheHits || 0) + '\n';
+        output += '  cacheMisses: ' + (persistent.stats.cacheMisses || 0) + '\n';
+      } else {
+        output += '  Not initialized\n';
+      }
+
+      output += '\nUI State:\n';
+      if (persistent.uiState) {
+        output += '  panelEl exists: ' + (persistent.uiState.panelEl ? 'YES' : 'NO') + '\n';
+        output += '  Keys: ' + Object.keys(persistent.uiState).join(', ') + '\n';
+      } else {
+        output += '  Not initialized\n';
+      }
+
+      return output;
+    }
+
+    // Display results
+    function displayResults(message) {
+      var resultsEl = document.getElementById('results');
+      resultsEl.textContent = message;
+    }
+
+    // Append to results
+    function appendResults(message) {
+      var resultsEl = document.getElementById('results');
+      resultsEl.textContent += '\n' + message;
+    }
+
+    // Switch to card A
+    function switchToCardA() {
+      var cardContent = document.getElementById('card-content');
+      cardContent.innerHTML = testState.cardAContent;
+      testState.currentCard = 'A';
+      
+      var startTime = performance.now();
+      if (window.MD && typeof window.MD.init === 'function') {
+        window.MD.init();
+      }
+      var endTime = performance.now();
+      var duration = endTime - startTime;
+      
+      testState.initTimes.push({
+        card: 'A',
+        time: duration
+      });
+
+      var output = 'Switched to Card A\n';
+      output += 'Init time: ' + duration.toFixed(2) + 'ms\n\n';
+      output += formatResults();
+      displayResults(output);
+    }
+
+    // Switch to card B
+    function switchToCardB() {
+      var cardContent = document.getElementById('card-content');
+      cardContent.innerHTML = testState.cardBContent;
+      testState.currentCard = 'B';
+      
+      var startTime = performance.now();
+      if (window.MD && typeof window.MD.init === 'function') {
+        window.MD.init();
+      }
+      var endTime = performance.now();
+      var duration = endTime - startTime;
+      
+      testState.initTimes.push({
+        card: 'B',
+        time: duration
+      });
+
+      var output = 'Switched to Card B\n';
+      output += 'Init time: ' + duration.toFixed(2) + 'ms\n\n';
+      output += formatResults();
+      displayResults(output);
+    }
+
+    // Run auto test sequence
+    function runAutoTest() {
+      var summary = '';
+      var i = 0;
+      var entry = null;
+      var firstTime = 0;
+      var secondTime = 0;
+      var thirdTime = 0;
+      var cacheEffective = false;
+      
+      testState.initTimes = [];
+      displayResults('Starting auto test sequence...\n');
+
+      setTimeout(function() {
+        switchToCardA();
+        appendResults('\n--- Test 1 Complete: Card A ---');
+
+        setTimeout(function() {
+          switchToCardB();
+          appendResults('\n--- Test 2 Complete: Card B ---');
+
+          setTimeout(function() {
+            switchToCardA();
+            appendResults('\n--- Test 3 Complete: Card A (again) ---');
+
+            setTimeout(function() {
+              summary = '\n\n=== AUTO TEST SUMMARY ===\n';
+              summary += 'Total init calls: ' + testState.initTimes.length + '\n\n';
+
+              for (i = 0; i < testState.initTimes.length; i++) {
+                entry = testState.initTimes[i];
+                summary += 'Init #' + (i + 1) + ' (Card ' + entry.card + '): ' + entry.time.toFixed(2) + 'ms\n';
+              }
+
+              summary += '\n=== PERFORMANCE CHECK ===\n';
+              if (testState.initTimes.length >= 3) {
+                firstTime = testState.initTimes[0].time;
+                secondTime = testState.initTimes[1].time;
+                thirdTime = testState.initTimes[2].time;
+
+                summary += 'First init: ' + firstTime.toFixed(2) + 'ms\n';
+                summary += 'Second init: ' + secondTime.toFixed(2) + 'ms\n';
+                summary += 'Third init: ' + thirdTime.toFixed(2) + 'ms\n\n';
+
+                cacheEffective = secondTime < 100 && thirdTime < 100;
+                if (cacheEffective) {
+                  summary += '<span class="pass">PASS: Cache is effective (subsequent inits < 100ms)</span>\n';
+                } else {
+                  summary += '<span class="fail">FAIL: Cache may not be effective</span>\n';
+                  if (secondTime >= 100) {
+                    summary += '  - Second init too slow: ' + secondTime.toFixed(2) + 'ms\n';
+                  }
+                  if (thirdTime >= 100) {
+                    summary += '  - Third init too slow: ' + thirdTime.toFixed(2) + 'ms\n';
+                  }
+                }
+              }
+
+              appendResults(summary);
+            }, 100);
+          }, 100);
+        }, 100);
+      }, 100);
+    }
+
+    // Event listeners
+    document.getElementById('btn-card-a').addEventListener('click', switchToCardA);
+    document.getElementById('btn-card-b').addEventListener('click', switchToCardB);
+    document.getElementById('btn-auto-test').addEventListener('click', runAutoTest);
+    document.getElementById('btn-clear-results').addEventListener('click', function() {
+      testState.initTimes = [];
+      displayResults('Results cleared. Ready for new test.');
+    });
+
+    // Initial state
+    displayResults('Test page loaded. Click buttons to begin testing.\n\nAvailable tests:\n- Card A: Switch to Japanese card\n- Card B: Switch to English card\n- Run Auto Test: Execute full test sequence\n- Clear Results: Reset test state');
+  </script>
+</body>
+</html>
