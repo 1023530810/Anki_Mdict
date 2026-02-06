@@ -5,10 +5,17 @@
     window.MD = {};
   }
 
+  if (!window.MD._persistent) {
+    window.MD._persistent = {};
+  }
+  if (!window.MD._persistent.uiState) {
+    window.MD._persistent.uiState = {};
+  }
+
   var historyKey = "mdict_history";
-  var panelEl = null;
-  var modalEl = null;
-  var overlayEl = null;
+  var panelEl = window.MD._persistent.uiState.panelEl || null;
+  var modalEl = window.MD._persistent.uiState.modalEl || null;
+  var overlayEl = window.MD._persistent.uiState.overlayEl || null;
 
   function createPanelElements() {
     var panel = document.createElement('div');
@@ -139,9 +146,10 @@
           window.MD.UI.container = null;
           return ensurePanel();
         }
-        elements.closeBtn.className = 'md-panel-close md-hidden';
-        container.appendChild(elements.panel);
-        panelEl = elements.panel;
+         elements.closeBtn.className = 'md-panel-close md-hidden';
+         container.appendChild(elements.panel);
+         panelEl = elements.panel;
+         window.MD._persistent.uiState.panelEl = panelEl;
       } else {
         if (window.console && window.console.warn) {
           console.warn('[MD.UI] 嵌入式容器不存在，回退到弹窗模式');
@@ -149,19 +157,23 @@
         window.MD.UI.mode = 'modal';
         return ensurePanel();
       }
-    } else {
-      overlayEl = document.createElement('div');
-      overlayEl.className = 'md-modal-overlay md-modal-hidden';
+     } else {
+       overlayEl = document.createElement('div');
+       overlayEl.className = 'md-modal-overlay md-modal-hidden';
 
-      modalEl = document.createElement('div');
-      modalEl.className = 'md-modal md-modal-medium md-modal-hidden';
+       modalEl = document.createElement('div');
+       modalEl.className = 'md-modal md-modal-medium md-modal-hidden';
 
-      modalEl.appendChild(elements.panel);
+       modalEl.appendChild(elements.panel);
 
-      document.body.appendChild(overlayEl);
-      document.body.appendChild(modalEl);
+       document.body.appendChild(overlayEl);
+       document.body.appendChild(modalEl);
 
-      panelEl = elements.panel;
+       window.MD._persistent.uiState.overlayEl = overlayEl;
+       window.MD._persistent.uiState.modalEl = modalEl;
+
+       panelEl = elements.panel;
+       window.MD._persistent.uiState.panelEl = panelEl;
     }
 
     window.MD.UI.panel = panelEl;
