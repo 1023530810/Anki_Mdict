@@ -12,21 +12,29 @@
   var tokenizerCache = window.MD._persistent.tokenizerCache || {};
   window.MD._persistent.tokenizerCache = tokenizerCache;
   
-  var cmuCache = window.MD._persistent.cmuCache !== undefined ? window.MD._persistent.cmuCache : null;
+   var cmuCache = window.MD._persistent.cmuCache !== undefined ? window.MD._persistent.cmuCache : null;
 
-  function loadScript(src) {
-    return new Promise(function (resolve, reject) {
-      var script = document.createElement("script");
-      script.src = src;
-      script.onload = function () {
-        resolve();
-      };
-      script.onerror = function () {
-        reject(new Error("TOKENIZER_LOAD_FAILED"));
-      };
-      document.head.appendChild(script);
-    });
-  }
+   var scriptsLoading = window.MD._persistent.scriptsLoading || {};
+   window.MD._persistent.scriptsLoading = scriptsLoading;
+
+   function loadScript(src) {
+     if (scriptsLoading[src]) {
+       return scriptsLoading[src];
+     }
+     scriptsLoading[src] = new Promise(function (resolve, reject) {
+       var script = document.createElement("script");
+       script.src = src;
+       script.onload = function () {
+         resolve();
+       };
+       script.onerror = function () {
+         delete scriptsLoading[src];
+         reject(new Error("TOKENIZER_LOAD_FAILED"));
+       };
+       document.head.appendChild(script);
+     });
+     return scriptsLoading[src];
+   }
 
   function loadJson(path) {
     if (window.fetch) {
