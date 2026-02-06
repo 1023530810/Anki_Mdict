@@ -77,7 +77,7 @@
     return languages;
   }
 
-  function init(options) {
+  function doInit(options) {
     var opts = options || {};
     var configPath = opts.configPath || "_mdict_config.json";
     var autoTokenize = opts.autoTokenize !== false;
@@ -125,6 +125,22 @@
         emit("md:error", { code: error.message || "TOKENIZER_LOAD_FAILED", message: error.message || "初始化失败" });
         throw error;
       });
+  }
+
+  function init(options) {
+    if (window.MD._persistent.initPromise) {
+      return window.MD._persistent.initPromise;
+    }
+    window.MD._persistent.initPromise = doInit(options)
+      .then(function (result) {
+        window.MD._persistent.initPromise = null;
+        return result;
+      })
+      .catch(function (error) {
+        window.MD._persistent.initPromise = null;
+        throw error;
+      });
+    return window.MD._persistent.initPromise;
   }
 
   function initTokenizers(config) {
