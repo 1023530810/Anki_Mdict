@@ -9,6 +9,10 @@
     window.MD._persistent = {};
   }
 
+  if (!window.MD._persistent.loadedLanguages) {
+    window.MD._persistent.loadedLanguages = {};
+  }
+
   function fetchJson(path) {
     if (window.fetch) {
       return fetch(path).then(function (response) {
@@ -147,16 +151,20 @@
     var tokenizers = config.tokenizers || {};
     var initLanguages = getInitLanguages(config);
     var tasks = [];
-    var cache = window.MD._persistent.tokenizerCache || {};
+    var loadedLanguages = window.MD._persistent.loadedLanguages;
     if (window.MD.State) {
       window.MD.State.initLanguages = initLanguages;
     }
     initLanguages.forEach(function (language) {
-      if (cache[language]) {
+      if (loadedLanguages[language]) {
         return;
       }
       if (tokenizers[language]) {
-        tasks.push(window.MD.Tokenizer.init(language));
+        tasks.push(
+          window.MD.Tokenizer.init(language).then(function () {
+            loadedLanguages[language] = true;
+          })
+        );
       }
     });
     return Promise.all(tasks);
