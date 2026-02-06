@@ -594,9 +594,12 @@
       return;
     }
 
+    var debounceTimer = null;
+
     elements.searchBtn.addEventListener('click', function() {
       var word = elements.searchInput.value;
       if (word && word.replace(/^\s+|\s+$/g, '') !== '') {
+        clearTimeout(debounceTimer);
         lookupAndRender(word.replace(/^\s+|\s+$/g, ''), null, '', {});
       }
     });
@@ -605,11 +608,21 @@
       var key = e.key || e.keyCode;
       var word;
       if (key === 'Enter' || key === 13) {
+        clearTimeout(debounceTimer);
         word = elements.searchInput.value;
         if (word && word.replace(/^\s+|\s+$/g, '') !== '') {
           lookupAndRender(word.replace(/^\s+|\s+$/g, ''), null, '', {});
         }
       }
+    });
+
+    elements.searchInput.addEventListener('input', function(e) {
+      clearTimeout(debounceTimer);
+      var word = e.target.value.replace(/^\s+|\s+$/g, '');
+      if (!word) return;
+      debounceTimer = setTimeout(function() {
+        lookupAndRender(word, null, '', {});
+      }, 500);
     });
   }
 
@@ -745,6 +758,8 @@
        var fullHtml = prefixHtml ? prefixHtml + html : html;
        elements.contentBody.innerHTML = "<div class=\"mdict-" + result.dictionaryId + "\">" + fullHtml + "</div>";
        elements.content.scrollTop = 0;
+
+      bindEntryLinks(elements.contentBody, elements.searchInput, elements.dictSelect);
 
       if (result.dictionaryId) {
         selectDictionary(result.dictionaryId, result.dictionaryName);
