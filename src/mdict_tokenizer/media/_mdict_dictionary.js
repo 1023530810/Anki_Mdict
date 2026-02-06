@@ -228,5 +228,45 @@
       var config = window.MD && window.MD.State ? window.MD.State.config : null;
       return config ? config.dictionaries || [] : [];
     },
+    preloadIndexes: function (dictionaryIds) {
+      if (!dictionaryIds || !dictionaryIds.length) {
+        return Promise.resolve();
+      }
+      var ids = dictionaryIds.slice();
+      var concurrency = 3;
+      var active = 0;
+      var index = 0;
+
+      return new Promise(function (resolve, reject) {
+        var failed = false;
+
+        function next() {
+          if (failed) {
+            return;
+          }
+          if (index >= ids.length && active === 0) {
+            resolve();
+            return;
+          }
+          while (active < concurrency && index < ids.length) {
+            active++;
+            var id = ids[index++];
+            loadIndex(id)
+              .then(function () {
+                active--;
+                next();
+              })
+              .catch(function (err) {
+                if (!failed) {
+                  failed = true;
+                  reject(err);
+                }
+              });
+          }
+        }
+
+        next();
+      });
+    }
   };
 })();
