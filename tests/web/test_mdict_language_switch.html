@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Mdict Language Switch Test</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #fafafa; }
+    h1 { color: #333; }
+    .controls { margin: 15px 0; }
+    .controls button { margin-right: 10px; padding: 8px 16px; background: #007bff; color: white; border: none; cursor: pointer; border-radius: 4px; }
+    .controls button:hover { background: #0056b3; }
+    .controls button:active { background: #004085; }
+    #card-content { border: 2px solid #ccc; padding: 15px; min-height: 80px; margin: 15px 0; background: white; border-radius: 4px; }
+    .results { background: #f5f5f5; padding: 15px; border: 1px solid #ddd; white-space: pre-wrap; border-radius: 4px; margin-top: 15px; max-height: 400px; overflow-y: auto; }
+    .pass { color: green; font-weight: bold; }
+    .fail { color: red; font-weight: bold; }
+    .info { color: #666; margin: 5px 0; }
+    .section-title { font-weight: bold; margin-top: 10px; color: #333; }
+  </style>
+</head>
+<body>
+  <h1>Mdict Language Switch Test</h1>
+  
+  <div class="controls">
+    <button id="btn-ja">Japanese Card</button>
+    <button id="btn-en">English Card</button>
+    <button id="btn-ja2">Japanese Card 2</button>
+    <button id="btn-run-test" style="background: #28a745;">Run Language Switch Test</button>
+  </div>
+
+  <div id="card-content">
+    <p style="color: #999;">No card loaded</p>
+  </div>
+
+  <div class="results" id="results">
+    <div class="section-title">Verification Panel</div>
+    <div class="info">Loaded Languages: <span id="loaded-langs">-</span></div>
+    <div class="info">Tokenizer Hit Count: <span id="hit-count">-</span></div>
+    <div class="info">Init Count: <span id="init-count">-</span></div>
+    <div class="info">Current Language: <span id="current-lang">-</span></div>
+    <div style="margin-top: 15px; border-top: 1px solid #ddd; padding-top: 10px;">
+      <div class="section-title">Test Output</div>
+      <div id="test-output"></div>
+    </div>
+  </div>
+
+  <!-- Load Mdict modules -->
+  <script src="../../src/mdict_tokenizer/media/_mdict_config.js"></script>
+  <script src="../../src/mdict_tokenizer/media/_mdict_tokenizer.js"></script>
+  <script src="../../src/mdict_tokenizer/media/_mdict_dictionary.js"></script>
+  <script src="../../src/mdict_tokenizer/media/_mdict_main.js"></script>
+  <script src="../../src/mdict_tokenizer/media/_mdict_ui.js"></script>
+
+  <script>
+    // Test state
+    var testState = {
+      currentCard: null,
+      switchHistory: [],
+      testResults: []
+    };
+
+    // Card definitions
+    var cards = {
+      ja: {
+        name: 'Japanese Card',
+        lang: 'ja',
+        html: '<div class="mdict-field" data-mdict-field="Expression" data-mdict-lang="ja">食べる</div>'
+      },
+      en: {
+        name: 'English Card',
+        lang: 'en',
+        html: '<div class="mdict-field" data-mdict-field="Expression" data-mdict-lang="en">hello</div>'
+      },
+      ja2: {
+        name: 'Japanese Card 2',
+        lang: 'ja',
+        html: '<div class="mdict-field" data-mdict-field="Expression" data-mdict-lang="ja">走る</div>'
+      }
+    };
+
+    // Update verification panel
+    function updateVerificationPanel() {
+      var loadedLangs = window.MD && window.MD._persistent && window.MD._persistent.loadedLanguages 
+        ? JSON.stringify(window.MD._persistent.loadedLanguages) 
+        : 'N/A';
+      var hitCount = window.MD && window.MD._persistent && window.MD._persistent.stats 
+        ? window.MD._persistent.stats.tokenizerHitCount 
+        : 'N/A';
+      var initCount = window.MD && window.MD._persistent && window.MD._persistent.stats 
+        ? window.MD._persistent.stats.initCount 
+        : 'N/A';
+
+      document.getElementById('loaded-langs').textContent = loadedLangs;
+      document.getElementById('hit-count').textContent = hitCount;
+      document.getElementById('init-count').textContent = initCount;
+      document.getElementById('current-lang').textContent = testState.currentCard || '-';
+    }
+
+    // Load card
+    function loadCard(cardKey) {
+      var card = cards[cardKey];
+      if (!card) return;
+
+      testState.currentCard = cardKey;
+      testState.switchHistory.push(cardKey);
+
+      var cardContent = document.getElementById('card-content');
+      cardContent.innerHTML = '<strong>' + card.name + ' (' + card.lang + ')</strong><br>' + card.html;
+
+      updateVerificationPanel();
+    }
+
+    // Get current state snapshot
+    function getStateSnapshot() {
+      return {
+        loadedLanguages: window.MD && window.MD._persistent && window.MD._persistent.loadedLanguages 
+          ? JSON.stringify(window.MD._persistent.loadedLanguages)
+          : null,
+        tokenizerHitCount: window.MD && window.MD._persistent && window.MD._persistent.stats
+          ? window.MD._persistent.stats.tokenizerHitCount
+          : null,
+        initCount: window.MD && window.MD._persistent && window.MD._persistent.stats
+          ? window.MD._persistent.stats.initCount
+          : null
+      };
+    }
+
+    // Run test
+    function runLanguageSwitchTest() {
+      testState.testResults = [];
+      var testOutput = document.getElementById('test-output');
+      testOutput.innerHTML = '';
+
+      function log(message, isPass) {
+        var line = document.createElement('div');
+        if (isPass === true) {
+          line.className = 'pass';
+          line.textContent = '✓ ' + message;
+        } else if (isPass === false) {
+          line.className = 'fail';
+          line.textContent = '✗ ' + message;
+        } else {
+          line.textContent = message;
+        }
+        testOutput.appendChild(line);
+      }
+
+      log('Starting Language Switch Test...', null);
+      log('', null);
+
+      // Step 1: Load Japanese card
+      log('Step 1: Loading Japanese Card...', null);
+      loadCard('ja');
+      var state1 = getStateSnapshot();
+      log('  loadedLanguages: ' + state1.loadedLanguages, null);
+      log('  tokenizerHitCount: ' + state1.tokenizerHitCount, null);
+      log('  initCount: ' + state1.initCount, null);
+      log('', null);
+
+      // Step 2: Load English card
+      log('Step 2: Loading English Card...', null);
+      loadCard('en');
+      var state2 = getStateSnapshot();
+      log('  loadedLanguages: ' + state2.loadedLanguages, null);
+      log('  tokenizerHitCount: ' + state2.tokenizerHitCount, null);
+      log('  initCount: ' + state2.initCount, null);
+      log('', null);
+
+      // Step 3: Load Japanese card 2 (should reuse Japanese tokenizer)
+      log('Step 3: Loading Japanese Card 2 (should reuse Japanese)...', null);
+      var hitCountBefore = window.MD && window.MD._persistent && window.MD._persistent.stats
+        ? window.MD._persistent.stats.tokenizerHitCount
+        : 0;
+      loadCard('ja2');
+      var state3 = getStateSnapshot();
+      var hitCountAfter = window.MD && window.MD._persistent && window.MD._persistent.stats
+        ? window.MD._persistent.stats.tokenizerHitCount
+        : 0;
+      log('  loadedLanguages: ' + state3.loadedLanguages, null);
+      log('  tokenizerHitCount: ' + state3.tokenizerHitCount, null);
+      log('  initCount: ' + state3.initCount, null);
+      log('', null);
+
+      // Assertions
+      log('Assertions:', null);
+      
+      // Check if loadedLanguages contains both ja and en
+      var finalLangs = window.MD && window.MD._persistent && window.MD._persistent.loadedLanguages
+        ? window.MD._persistent.loadedLanguages
+        : {};
+      var hasJa = finalLangs.ja === true;
+      var hasEn = finalLangs.en === true;
+      
+      log('  Final loadedLanguages has ja: ' + hasJa, hasJa);
+      log('  Final loadedLanguages has en: ' + hasEn, hasEn);
+      
+      // Check if hit count increased (indicating cache reuse)
+      var hitCountIncreased = hitCountAfter > hitCountBefore;
+      log('  Tokenizer hit count increased on JA2 load: ' + hitCountIncreased, hitCountIncreased);
+      
+      // Overall result
+      log('', null);
+      var allPass = hasJa && hasEn && hitCountIncreased;
+      if (allPass) {
+        log('TEST RESULT: PASS', true);
+      } else {
+        log('TEST RESULT: FAIL', false);
+      }
+    }
+
+    // Event listeners
+    document.getElementById('btn-ja').addEventListener('click', function() {
+      loadCard('ja');
+    });
+
+    document.getElementById('btn-en').addEventListener('click', function() {
+      loadCard('en');
+    });
+
+    document.getElementById('btn-ja2').addEventListener('click', function() {
+      loadCard('ja2');
+    });
+
+    document.getElementById('btn-run-test').addEventListener('click', function() {
+      runLanguageSwitchTest();
+    });
+
+    // Initialize on page load
+    window.addEventListener('load', function() {
+      updateVerificationPanel();
+    });
+  </script>
+</body>
+</html>
