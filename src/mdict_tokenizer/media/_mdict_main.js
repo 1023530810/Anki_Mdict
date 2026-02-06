@@ -147,10 +147,14 @@
     var tokenizers = config.tokenizers || {};
     var initLanguages = getInitLanguages(config);
     var tasks = [];
+    var cache = window.MD._persistent.tokenizerCache || {};
     if (window.MD.State) {
       window.MD.State.initLanguages = initLanguages;
     }
     initLanguages.forEach(function (language) {
+      if (cache[language]) {
+        return;
+      }
       if (tokenizers[language]) {
         tasks.push(window.MD.Tokenizer.init(language));
       }
