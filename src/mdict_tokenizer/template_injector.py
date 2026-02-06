@@ -195,11 +195,10 @@ def build_script_block(fields: list[dict[str, str]]) -> str:
         '<script src="_mdict_dictionary.js"></script>\n'
         '<script src="_mdict_ui.js"></script>\n'
         '<script src="_mdict_main.js"></script>\n'
-        '<div id="mdict-panel"></div>\n'
         "<script>\n"
         f"window.MDICT_FIELDS = {field_payload};\n"
         "if (window.MD && typeof window.MD.init === 'function') {\n"
-        "  window.MD.init({ autoTokenize: true, targetContainer: '#mdict-panel' });\n"
+        "  window.MD.init({ autoTokenize: true });\n"
         "}\n"
         "</script>\n"
         f"{INJECT_END}"
