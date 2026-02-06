@@ -163,6 +163,13 @@
         tasks.push(
           window.MD.Tokenizer.init(language).then(function () {
             loadedLanguages[language] = true;
+            // Fire-and-forget: preload dictionary indexes for this language
+            var langConfig = tokenizers[language];
+            if (langConfig && langConfig.dictionaryIds && langConfig.dictionaryIds.length && window.MD.Dictionary && window.MD.Dictionary.preloadIndexes) {
+              window.MD.Dictionary.preloadIndexes(langConfig.dictionaryIds).catch(function () {
+                // Silently ignore preload failures
+              });
+            }
           })
         );
       }
