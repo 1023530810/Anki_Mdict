@@ -5,8 +5,14 @@
     window.MD = {};
   }
 
-  var tokenizerCache = {};
-  var cmuCache = null;
+  if (!window.MD._persistent) {
+    window.MD._persistent = {};
+  }
+
+  var tokenizerCache = window.MD._persistent.tokenizerCache || {};
+  window.MD._persistent.tokenizerCache = tokenizerCache;
+  
+  var cmuCache = window.MD._persistent.cmuCache !== undefined ? window.MD._persistent.cmuCache : null;
 
   function loadScript(src) {
     return new Promise(function (resolve, reject) {
@@ -101,15 +107,17 @@
     if (cmuCache) {
       return Promise.resolve(tokenizerCache.en);
     }
-    return loadJson("_mdict_cmudict.json")
-      .then(function (data) {
-        cmuCache = data || {};
-        return tokenizerCache.en;
-      })
-      .catch(function () {
-        cmuCache = {};
-        return tokenizerCache.en;
-      });
+     return loadJson("_mdict_cmudict.json")
+       .then(function (data) {
+         cmuCache = data || {};
+         window.MD._persistent.cmuCache = cmuCache;
+         return tokenizerCache.en;
+       })
+       .catch(function () {
+         cmuCache = {};
+         window.MD._persistent.cmuCache = cmuCache;
+         return tokenizerCache.en;
+       });
   }
 
   function arpabetToIpa(arpabet) {
