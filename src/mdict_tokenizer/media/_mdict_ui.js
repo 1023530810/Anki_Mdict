@@ -194,20 +194,26 @@
     window.MD.UI.panel = panelEl;
     window.MD.UI.elements = elements;
 
-    bindDropdownEvents(elements);
-    bindHotzoneEvents(elements);
-    bindCloseEvents(elements);
-    bindOverlayEvents();
-    bindSearchEvents(elements);
+     bindDropdownEvents(elements);
+     bindHotzoneEvents(elements);
+     bindCloseEvents(elements);
+     bindOverlayEvents();
+     bindSearchEvents(elements);
 
-    return panelEl;
+     // Restore search input from persisted state
+     if (window.MD._persistent.uiState.currentWord && elements.searchInput) {
+       elements.searchInput.value = window.MD._persistent.uiState.currentWord;
+     }
+
+     return panelEl;
   }
 
-  var dropdownState = {
+  var dropdownState = window.MD._persistent.uiState.dropdownState || {
     isOpen: false,
     selectedDictId: '',
     selectedDictName: ''
   };
+  window.MD._persistent.uiState.dropdownState = dropdownState;
 
   function openDropdown() {
     var elements = window.MD.UI.elements;
@@ -528,12 +534,13 @@
       prevIndex = dictionaries.length - 1; // 循环到最后一个
     }
 
-    prevDict = dictionaries[prevIndex];
-    if (prevDict) {
-      selectDictionary(prevDict.id, prevDict.name);
-      window.MD.UI.currentDictId = prevDict.id;
-      refreshLookup();
-    }
+     prevDict = dictionaries[prevIndex];
+     if (prevDict) {
+       selectDictionary(prevDict.id, prevDict.name);
+       window.MD.UI.currentDictId = prevDict.id;
+       window.MD._persistent.uiState.currentDictId = window.MD.UI.currentDictId;
+       refreshLookup();
+     }
   }
 
   /**
@@ -555,12 +562,13 @@
       nextIndex = 0; // 循环到第一个
     }
 
-    nextDict = dictionaries[nextIndex];
-    if (nextDict) {
-      selectDictionary(nextDict.id, nextDict.name);
-      window.MD.UI.currentDictId = nextDict.id;
-      refreshLookup();
-    }
+     nextDict = dictionaries[nextIndex];
+     if (nextDict) {
+       selectDictionary(nextDict.id, nextDict.name);
+       window.MD.UI.currentDictId = nextDict.id;
+       window.MD._persistent.uiState.currentDictId = window.MD.UI.currentDictId;
+       refreshLookup();
+     }
   }
 
   /**
@@ -751,12 +759,14 @@
       return;
     }
 
-    elements.contentBody.innerHTML = "<div class=\"md-loading\">加载中...</div>";
-    
-    window.MD.UI.currentWord = word;
-    if (dictionaryId) {
-      window.MD.UI.currentDictId = dictionaryId;
-    }
+     elements.contentBody.innerHTML = "<div class=\"md-loading\">加载中...</div>";
+     
+     window.MD.UI.currentWord = word;
+     window.MD._persistent.uiState.currentWord = window.MD.UI.currentWord;
+     if (dictionaryId) {
+       window.MD.UI.currentDictId = dictionaryId;
+       window.MD._persistent.uiState.currentDictId = window.MD.UI.currentDictId;
+     }
     
     var lookupOptions = options || {};
     if (!lookupOptions.language) {
@@ -777,9 +787,10 @@
         return;
       }
       
-      if (result.dictionaryId) {
-        window.MD.UI.currentDictId = result.dictionaryId;
-      }
+       if (result.dictionaryId) {
+         window.MD.UI.currentDictId = result.dictionaryId;
+         window.MD._persistent.uiState.currentDictId = window.MD.UI.currentDictId;
+       }
       
        var html = fixCssReferences(result.definition, result.dictionaryId);
        var fullHtml = prefixHtml ? prefixHtml + html : html;
