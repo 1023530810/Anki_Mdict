@@ -17,19 +17,10 @@
     var header = document.createElement('div');
     header.className = 'md-panel-header';
 
-    var title = document.createElement('span');
-    title.className = 'md-panel-title';
-    title.textContent = '词典';
-
     var searchInput = document.createElement('input');
     searchInput.type = 'text';
-    searchInput.className = 'md-panel-search-input';
+    searchInput.className = 'md-panel-search';
     searchInput.placeholder = '搜索词条...';
-
-    var searchBtn = document.createElement('button');
-    searchBtn.type = 'button';
-    searchBtn.className = 'md-panel-search-btn';
-    searchBtn.textContent = '搜索';
 
     var controls = document.createElement('div');
     controls.className = 'md-panel-controls';
@@ -42,22 +33,23 @@
     dictSelect.className = 'md-panel-dict-select';
     dictSelect.setAttribute('aria-haspopup', 'listbox');
     dictSelect.setAttribute('aria-expanded', 'false');
+    dictSelect.setAttribute('aria-controls', 'md-dict-dropdown');
     dictSelect.setAttribute('tabindex', '0');
 
     var dictSelectText = document.createElement('span');
     dictSelectText.className = 'md-panel-dict-select-text';
-    dictSelectText.textContent = '全部辞典';
-
-    var dictSelectArrow = document.createElement('span');
-    dictSelectArrow.className = 'md-panel-dict-select-arrow';
-    dictSelectArrow.textContent = '▼';
+    dictSelectText.textContent = '';
 
     dictSelect.appendChild(dictSelectText);
-    dictSelect.appendChild(dictSelectArrow);
 
     var dictDropdown = document.createElement('div');
     dictDropdown.className = 'md-dropdown md-dropdown-hidden';
     dictDropdown.setAttribute('role', 'listbox');
+    dictDropdown.id = 'md-dict-dropdown';
+
+    var scopeIndicator = document.createElement('span');
+    scopeIndicator.className = 'md-dict-scope';
+    scopeIndicator.textContent = '全局';
 
     var counter = document.createElement('span');
     counter.className = 'md-panel-counter md-hidden';
@@ -67,12 +59,11 @@
     closeBtn.className = 'md-panel-close';
     closeBtn.textContent = '×';
 
-    header.appendChild(title);
     header.appendChild(searchInput);
-    header.appendChild(searchBtn);
     dictSelectWrapper.appendChild(dictSelect);
     dictSelectWrapper.appendChild(dictDropdown);
     controls.appendChild(dictSelectWrapper);
+    controls.appendChild(scopeIndicator);
     controls.appendChild(counter);
     controls.appendChild(closeBtn);
     header.appendChild(controls);
@@ -98,6 +89,15 @@
     panel.appendChild(header);
     panel.appendChild(content);
 
+    var title = document.createElement('span');
+    title.className = 'md-panel-title';
+    title.textContent = '词典';
+
+    var searchBtn = document.createElement('button');
+    searchBtn.type = 'button';
+    searchBtn.className = 'md-panel-search-btn';
+    searchBtn.textContent = '搜索';
+
     return {
       panel: panel,
       header: header,
@@ -108,6 +108,7 @@
       dictSelect: dictSelect,
       dictSelectText: dictSelectText,
       dictDropdown: dictDropdown,
+      scopeIndicator: scopeIndicator,
       counter: counter,
       closeBtn: closeBtn,
       content: content,
@@ -178,7 +179,7 @@
   var dropdownState = {
     isOpen: false,
     selectedDictId: '',
-    selectedDictName: '全部辞典'
+    selectedDictName: ''
   };
 
   function openDropdown() {
@@ -222,7 +223,7 @@
     }
 
     dropdownState.selectedDictId = dictId || '';
-    dropdownState.selectedDictName = dictName || '全部辞典';
+    dropdownState.selectedDictName = dictName || '';
     elements.dictSelectText.textContent = dropdownState.selectedDictName;
 
     if (elements.dictDropdown) {
@@ -265,17 +266,6 @@
       dicts = window.MD.Dictionary.getDictionaries();
     }
 
-    allOption = document.createElement('button');
-    allOption.type = 'button';
-    allOption.className = 'md-dropdown-option';
-    if (dropdownState.selectedDictId === '') {
-      allOption.className += ' md-dropdown-option-active';
-    }
-    allOption.setAttribute('data-dict-id', '');
-    allOption.setAttribute('role', 'option');
-    allOption.textContent = '全部辞典';
-    dropdownEl.appendChild(allOption);
-
     for (i = 0; i < dicts.length; i++) {
       dict = dicts[i];
       option = document.createElement('button');
@@ -288,6 +278,15 @@
       option.setAttribute('role', 'option');
       option.textContent = dict.name;
       dropdownEl.appendChild(option);
+    }
+
+    var wrapper = dropdownEl.parentElement;
+    if (wrapper) {
+      if (dicts.length <= 1) {
+        wrapper.classList.add('md-hidden');
+      } else {
+        wrapper.classList.remove('md-hidden');
+      }
     }
   }
 
@@ -334,7 +333,7 @@
       }
       e.stopPropagation();
       dictId = optionBtn.getAttribute('data-dict-id') || '';
-      dictName = optionBtn.textContent || '全部辞典';
+      dictName = optionBtn.textContent || '';
       selectDictionary(dictId, dictName);
     });
 
@@ -389,7 +388,7 @@
         if (focused && focused.classList && focused.classList.contains('md-dropdown-option')) {
           e.preventDefault();
           dictId = focused.getAttribute('data-dict-id') || '';
-          dictName = focused.textContent || '全部辞典';
+          dictName = focused.textContent || '';
           selectDictionary(dictId, dictName);
         }
       }
@@ -728,9 +727,9 @@
     }
     setLastLookupLanguage(lookupOptions.language);
     window.MD.Dictionary.lookup(word, dictionaryId, lookupOptions).then(function (result) {
-      if (!result.found) {
-        elements.contentBody.innerHTML = "<div class=\"md-empty\">未找到释义</div>";
-        elements.contentBody.scrollTop = 0;
+       if (!result.found) {
+         elements.contentBody.innerHTML = "<div class=\"md-empty\">未找到释义</div>";
+         elements.content.scrollTop = 0;
         if (elements.title) {
           elements.title.textContent = word;
         }
@@ -742,10 +741,10 @@
         window.MD.UI.currentDictId = result.dictionaryId;
       }
       
-      var html = fixCssReferences(result.definition, result.dictionaryId);
-      var fullHtml = prefixHtml ? prefixHtml + html : html;
-      elements.contentBody.innerHTML = "<div class=\"mdict-" + result.dictionaryId + "\">" + fullHtml + "</div>";
-      elements.contentBody.scrollTop = 0;
+       var html = fixCssReferences(result.definition, result.dictionaryId);
+       var fullHtml = prefixHtml ? prefixHtml + html : html;
+       elements.contentBody.innerHTML = "<div class=\"mdict-" + result.dictionaryId + "\">" + fullHtml + "</div>";
+       elements.content.scrollTop = 0;
 
       if (result.dictionaryId) {
         selectDictionary(result.dictionaryId, result.dictionaryName);

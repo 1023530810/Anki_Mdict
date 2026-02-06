@@ -266,294 +266,271 @@
 }
 
 /* ==========================================================================
-   嵌入式面板样式（.md-panel）
+   嵌入式面板样式（.md-panel）— 对齐 ListenSpeak 字典面板布局
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   主容器 - 自适应父容器尺寸
+   主容器
    -------------------------------------------------------------------------- */
 .md-panel {
+  position: static;
+  width: 100%;
+  max-height: none;
+  background: var(--md-card-bg);
+  border: 1px solid var(--md-divider);
+  border-radius: 8px;
+  box-shadow: none;
+  z-index: 1;
+  overflow: visible;
   display: flex;
   flex-direction: column;
-  width: 100%;
-  height: 100%;
-  background: var(--md-card-bg);
-  border: 1px solid var(--md-card-border);
-  border-radius: 8px;
-  box-shadow: 0 2px 8px var(--md-card-shadow);
-  overflow: hidden;
   font-size: var(--md-font-size);
   color: var(--md-text-primary);
 }
 
 /* --------------------------------------------------------------------------
-   顶部标题栏
+   头部 — 搜索框 + 控件在同一行
    -------------------------------------------------------------------------- */
 .md-panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  background: var(--md-popup-header-bg);
+  --md-control-height: 30px;
+  padding: 12px 15px;
+  background: var(--md-button-bg);
   border-bottom: 1px solid var(--md-divider);
-  flex-shrink: 0;
-}
-
-.md-panel-title {
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--md-text-primary);
-  margin: 0;
-}
-
-.md-panel-header-actions {
   display: flex;
+  justify-content: space-between;
   align-items: center;
   gap: 8px;
+  flex-wrap: nowrap;
+  overflow: visible;
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  box-sizing: border-box;
 }
 
 /* --------------------------------------------------------------------------
-   搜索输入区域
+   搜索框 — 直接在 header 内，无独立行
    -------------------------------------------------------------------------- */
 .md-panel-search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  background: var(--md-card-bg);
-  border-bottom: 1px solid var(--md-divider);
-  flex-shrink: 0;
-}
-
-.md-panel-search-input {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid var(--md-input-border);
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: none;
+  padding: 6px 10px;
   border-radius: 6px;
-  background: var(--md-input-bg);
+  border: 1px solid var(--md-divider);
+  background: var(--md-card-bg);
   color: var(--md-text-primary);
   font-size: 14px;
+  transition: border-color 0.2s;
+  height: var(--md-control-height);
+  box-sizing: border-box;
+}
+
+.md-panel-search:focus {
   outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  border-color: var(--md-accent);
 }
 
-.md-panel-search-input::placeholder {
-  color: var(--md-input-placeholder);
-}
-
-.md-panel-search-input:focus {
-  border-color: var(--md-input-border-focus);
-  box-shadow: 0 0 0 3px var(--md-accent-bg);
-}
-
-.md-panel-search-btn {
-  padding: 8px 14px;
-  border: 1px solid var(--md-button-border);
-  border-radius: 6px;
-  background: var(--md-button-bg);
-  color: var(--md-button-text);
-  font-size: 14px;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
-  flex-shrink: 0;
-}
-
-.md-panel-search-btn:hover {
-  background: var(--md-button-bg-hover);
-}
-
-.md-panel-search-btn:active {
-  background: var(--md-accent-bg);
+.md-panel-search::placeholder {
+  color: var(--md-text-secondary);
+  opacity: 0.6;
 }
 
 /* --------------------------------------------------------------------------
-   控制按钮区域
+   控件区域
    -------------------------------------------------------------------------- */
 .md-panel-controls {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px;
-  background: var(--md-card-bg);
-  border-bottom: 1px solid var(--md-divider);
+  min-width: 0;
+  flex: 0 0 auto;
   flex-shrink: 0;
 }
 
-.md-panel-control-btn {
-  padding: 6px 10px;
-  border: 1px solid var(--md-button-border);
-  border-radius: 4px;
-  background: var(--md-button-bg);
-  color: var(--md-button-text);
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.md-panel-control-btn:hover {
-  background: var(--md-button-bg-hover);
-}
-
-.md-panel-control-btn.active {
-  background: var(--md-accent);
-  color: #ffffff;
-  border-color: var(--md-accent);
+/* --------------------------------------------------------------------------
+   字典选择器
+   -------------------------------------------------------------------------- */
+.md-panel-dict-select-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  height: var(--md-control-height);
 }
 
 .md-panel-dict-select {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 80px;
+  max-width: min(80px, 32vw);
+  min-width: 0;
+  height: var(--md-control-height);
   padding: 6px 10px;
-  border: 1px solid var(--md-input-border);
-  border-radius: 4px;
-  background: var(--md-input-bg);
+  border-radius: 6px;
+  border: 1px solid var(--md-divider);
+  background: var(--md-card-bg);
   color: var(--md-text-primary);
-  font-size: 13px;
+  font-size: 14px;
+  line-height: normal;
+  transition: border-color 0.2s;
   cursor: pointer;
-  min-width: 120px;
+  outline: none;
+  box-sizing: border-box;
+  appearance: none;
+  -webkit-appearance: none;
+  box-shadow: none;
 }
 
 .md-panel-dict-select:focus {
-  border-color: var(--md-input-border-focus);
   outline: none;
+  border-color: var(--md-accent);
+}
+
+.md-panel-dict-select-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: normal;
 }
 
 /* --------------------------------------------------------------------------
-   内容显示区域 - flex: 1 填充剩余空间
+   下拉菜单
+   -------------------------------------------------------------------------- */
+.md-dropdown {
+  position: absolute;
+  min-width: 100%;
+  top: calc(100% + 4px);
+  bottom: auto;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  background: var(--md-card-bg);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px var(--md-card-shadow);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.md-dropdown-hidden {
+  display: none !important;
+}
+
+.md-dropdown-option {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--md-text-primary);
+  cursor: pointer;
+  font-size: 14px;
+  white-space: nowrap;
+  outline: none;
+  text-align: left;
+}
+
+.md-dropdown-option:hover {
+  background: var(--md-button-bg-hover);
+}
+
+.md-dropdown-option-active {
+  background: var(--md-accent);
+  color: #fff;
+}
+
+/* --------------------------------------------------------------------------
+   作用域指示器
+   -------------------------------------------------------------------------- */
+.md-dict-scope {
+  font-size: 12px;
+  color: var(--md-text-secondary);
+}
+
+/* --------------------------------------------------------------------------
+   计数器
+   -------------------------------------------------------------------------- */
+.md-panel-counter {
+  font-size: 12px;
+  color: var(--md-text-secondary);
+  font-family: 'SF Mono', 'Consolas', monospace;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* --------------------------------------------------------------------------
+   关闭按钮
+   -------------------------------------------------------------------------- */
+.md-panel-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--md-text-secondary);
+  cursor: pointer;
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.2s, color 0.2s;
+  box-sizing: border-box;
+}
+
+.md-panel-close:hover {
+  background: var(--md-button-bg-hover);
+  color: var(--md-text-primary);
+}
+
+/* --------------------------------------------------------------------------
+   内容区域
    -------------------------------------------------------------------------- */
 .md-panel-content {
-  flex: 1;
+  position: relative;
+  padding: 15px;
   overflow-y: auto;
-  overflow-x: hidden;
-  padding: 14px;
-  background: var(--md-card-bg);
+  flex: 1;
+  min-height: 0;
+  color: var(--md-text-primary);
+  line-height: 1.6;
+  text-align: left;
 }
 
 .md-panel-content::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
 .md-panel-content::-webkit-scrollbar-track {
-  background: var(--md-scrollbar-track);
-  border-radius: 4px;
+  background: transparent;
 }
 
 .md-panel-content::-webkit-scrollbar-thumb {
   background: var(--md-scrollbar-thumb);
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 .md-panel-content::-webkit-scrollbar-thumb:hover {
   background: var(--md-scrollbar-thumb-hover);
 }
 
-/* 内容区域空状态 */
-.md-panel-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--md-text-muted);
+/* --------------------------------------------------------------------------
+   加载/空状态
+   -------------------------------------------------------------------------- */
+.md-loading {
   text-align: center;
+  color: var(--md-text-secondary);
   padding: 20px;
-}
-
-.md-panel-empty-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
-  opacity: 0.5;
-}
-
-.md-panel-empty-text {
-  font-size: 14px;
-}
-
-/* --------------------------------------------------------------------------
-   底部区域（可选）
-   -------------------------------------------------------------------------- */
-.md-panel-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  background: var(--md-popup-header-bg);
-  border-top: 1px solid var(--md-divider);
-  flex-shrink: 0;
-}
-
-.md-panel-footer-info {
-  font-size: 12px;
-  color: var(--md-text-muted);
-}
-
-.md-panel-footer-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* --------------------------------------------------------------------------
-   热区样式（面板内可点击区域）
-   -------------------------------------------------------------------------- */
-.md-panel-hotzone {
-  cursor: pointer;
-  padding: 8px 12px;
-  margin: 4px 0;
-  border-radius: 6px;
-  background: var(--md-hotzone-bg);
-  transition: background 0.15s ease;
-}
-
-.md-panel-hotzone:hover {
-  background: var(--md-hotzone-hover);
-}
-
-.md-panel-hotzone:active {
-  background: var(--md-hotzone-active);
-}
-
-/* --------------------------------------------------------------------------
-   面板尺寸变体
-   -------------------------------------------------------------------------- */
-.md-panel-compact {
-  font-size: 13px;
-}
-
-.md-panel-compact .md-panel-header {
-  padding: 8px 12px;
-}
-
-.md-panel-compact .md-panel-search {
-  padding: 8px 12px;
-}
-
-.md-panel-compact .md-panel-content {
-  padding: 10px;
-}
-
-/* --------------------------------------------------------------------------
-   面板状态
-   -------------------------------------------------------------------------- */
-.md-panel-loading {
-  position: relative;
-}
-
-.md-panel-loading::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--md-overlay-bg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
-}
-
-.md-panel-disabled {
-  opacity: 0.6;
-  pointer-events: none;
 }
 
 /* ==========================================================================
@@ -561,7 +538,7 @@
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   遮罩层 - 半透明背景覆盖整个视口
+   遮罩层
    -------------------------------------------------------------------------- */
 .md-modal-overlay {
   position: fixed;
@@ -582,7 +559,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   模态弹窗主容器
+   弹窗主容器 — 固定高度，不再跳动
    -------------------------------------------------------------------------- */
 .md-modal {
   position: fixed;
@@ -591,6 +568,7 @@
   transform: translate(-50%, -50%) scale(0.95);
   width: 90%;
   max-width: 480px;
+  height: 50vh;
   background: var(--md-popup-bg);
   border: 1px solid var(--md-popup-border);
   border-radius: 12px;
@@ -611,148 +589,47 @@
 }
 
 /* --------------------------------------------------------------------------
-   弹窗内容容器 - 包裹实际内容
-   -------------------------------------------------------------------------- */
-.md-modal-container {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-}
-
-/* --------------------------------------------------------------------------
-   弹窗头部 - 标题与关闭按钮
-   -------------------------------------------------------------------------- */
-.md-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px;
-  background: var(--md-popup-header-bg);
-  border-bottom: 1px solid var(--md-divider);
-  flex-shrink: 0;
-}
-
-.md-modal-title {
-  font-weight: 600;
-  font-size: 16px;
-  color: var(--md-text-primary);
-  margin: 0;
-}
-
-/* --------------------------------------------------------------------------
-   关闭按钮
-   -------------------------------------------------------------------------- */
-.md-modal-close {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  color: var(--md-text-secondary);
-  font-size: 20px;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
-  flex-shrink: 0;
-}
-
-.md-modal-close:hover {
-  background: var(--md-button-bg-hover);
-  color: var(--md-text-primary);
-}
-
-.md-modal-close:active {
-  background: var(--md-hotzone-active);
-}
-
-/* --------------------------------------------------------------------------
-   弹窗内容区域
-   -------------------------------------------------------------------------- */
-.md-modal-body {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 16px;
-  background: var(--md-popup-bg);
-}
-
-.md-modal-body::-webkit-scrollbar {
-  width: 8px;
-}
-
-.md-modal-body::-webkit-scrollbar-track {
-  background: var(--md-scrollbar-track);
-  border-radius: 4px;
-}
-
-.md-modal-body::-webkit-scrollbar-thumb {
-  background: var(--md-scrollbar-thumb);
-  border-radius: 4px;
-}
-
-.md-modal-body::-webkit-scrollbar-thumb:hover {
-  background: var(--md-scrollbar-thumb-hover);
-}
-
-/* --------------------------------------------------------------------------
-   弹窗底部（可选）
-   -------------------------------------------------------------------------- */
-.md-modal-footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 12px 16px;
-  background: var(--md-popup-header-bg);
-  border-top: 1px solid var(--md-divider);
-  flex-shrink: 0;
-}
-
-/* --------------------------------------------------------------------------
-   高度变体 - 控制弹窗最大高度
+   高度变体 — 固定 height 替代 max-height
    -------------------------------------------------------------------------- */
 .md-modal-small {
-  max-height: 30vh;
+  height: 30vh;
 }
 
 .md-modal-medium {
-  max-height: 50vh;
+  height: 50vh;
 }
 
 .md-modal-large {
-  max-height: 70vh;
+  height: 70vh;
 }
 
 .md-modal-full {
-  max-height: 90vh;
+  height: 90vh;
 }
 
 /* --------------------------------------------------------------------------
-   隐藏状态 - 用于 JS 控制显示/隐藏
+   隐藏状态
    -------------------------------------------------------------------------- */
 .md-modal-hidden {
   display: none !important;
 }
 
 /* --------------------------------------------------------------------------
-   弹窗内嵌入面板时的适配
+   弹窗内嵌入面板适配
    -------------------------------------------------------------------------- */
 .md-modal .md-panel {
   border: none;
   border-radius: 0;
   box-shadow: none;
+  height: 100%;
 }
 
 /* ==========================================================================
-   热区样式（边缘点击区域）
+   热区样式（边缘点击区域）— 对齐 ListenSpeak
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   基础热区 - 绝对定位的边缘点击区域
+   基础热区
    -------------------------------------------------------------------------- */
 .md-hotzone {
   position: absolute;
@@ -765,10 +642,8 @@
   -webkit-user-select: none;
   pointer-events: auto;
   touch-action: manipulation;
-  /* 避免完全透明导致事件穿透 - 使用接近但不完全透明的背景 */
-  background: var(--md-hotzone-bg);
+  background: var(--md-button-bg);
   opacity: 0.01;
-  transition: opacity 0.2s ease, background 0.2s ease;
 }
 
 /* --------------------------------------------------------------------------
@@ -783,27 +658,45 @@
 }
 
 /* --------------------------------------------------------------------------
-   热区交互状态
+   热区交互状态 — 亮色模式
    -------------------------------------------------------------------------- */
 .md-hotzone:hover {
-  opacity: 1;
-  background: var(--md-hotzone-hover);
-  box-shadow: inset 2px 0 4px var(--md-hotzone-hover);
+  background: rgba(247, 244, 237, 0.08);
+  box-shadow: inset 2px 0 4px rgba(247, 244, 237, 0.3);
 }
 
 .md-hotzone:active {
-  opacity: 1;
-  background: var(--md-hotzone-active);
-  box-shadow: inset 2px 0 6px var(--md-hotzone-active);
+  background: rgba(247, 244, 237, 0.14);
+  box-shadow: inset 2px 0 6px rgba(247, 244, 237, 0.4);
 }
 
-/* 右侧热区的阴影方向调整 */
 .md-hotzone-right:hover {
-  box-shadow: inset -2px 0 4px var(--md-hotzone-hover);
+  box-shadow: inset -2px 0 4px rgba(247, 244, 237, 0.3);
 }
 
 .md-hotzone-right:active {
-  box-shadow: inset -2px 0 6px var(--md-hotzone-active);
+  box-shadow: inset -2px 0 6px rgba(247, 244, 237, 0.4);
+}
+
+/* --------------------------------------------------------------------------
+   热区交互状态 — 暗色模式
+   -------------------------------------------------------------------------- */
+.nightMode .md-hotzone:hover {
+  background: rgba(62, 56, 65, 0.10);
+  box-shadow: inset 2px 0 4px rgba(62, 56, 65, 0.3);
+}
+
+.nightMode .md-hotzone:active {
+  background: rgba(62, 56, 65, 0.18);
+  box-shadow: inset 2px 0 6px rgba(62, 56, 65, 0.4);
+}
+
+.nightMode .md-hotzone-right:hover {
+  box-shadow: inset -2px 0 4px rgba(62, 56, 65, 0.3);
+}
+
+.nightMode .md-hotzone-right:active {
+  box-shadow: inset -2px 0 6px rgba(62, 56, 65, 0.4);
 }
 
 /* ==========================================================================
