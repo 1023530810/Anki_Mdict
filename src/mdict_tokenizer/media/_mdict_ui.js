@@ -509,6 +509,64 @@
   }
 
   /**
+   * 生成探测缓存键
+   * @param {string} word - 查询词
+   * @param {Array} candidateDicts - 候选字典列表
+   * @returns {string} 缓存键
+   */
+  function getProbeCacheKey(word, candidateDicts) {
+    var ids = candidateDicts.map(function(dict) { return dict.id; });
+    return word + '::' + ids.join('|');
+  }
+
+  /**
+   * 并行探测候选字典，返回有结果的字典 ID 列表
+   * @param {string} word - 查询词
+   * @param {Array} candidateDicts - 候选字典列表
+   * @param {number} requestId - 请求 ID（用于竞态保护）
+   * @param {string} language - 语言代码
+   * @returns {Promise<Array>} 有效字典 ID 列表
+   */
+  function probeEffectiveDictionaryIds(word, candidateDicts, requestId, language) {
+    if (!candidateDicts.length) return Promise.resolve([]);
+
+    var cacheKey = getProbeCacheKey(word, candidateDicts);
+    if (window.MD._persistent.uiState.dictProbeCache &&
+        window.MD._persistent.uiState.dictProbeCache.key === cacheKey) {
+      return Promise.resolve(window.MD._persistent.uiState.dictProbeCache.effectiveIds.slice());
+    }
+
+    window.MD._persistent.uiState.probeActiveRequestId = requestId;
+    window.MD._persistent.uiState.suppressLookupEvent = true;
+
+    var lookups = candidateDicts.map(function(dict) {
+      var options = { dictionaryId: dict.id, requestId: requestId };
+      if (language) options.language = language;
+      return window.MD.API.lookup(word, options)
+        .then(function(result) { return { dictId: dict.id, result: result }; })
+        .catch(function() { return { dictId: dict.id, result: { found: false } }; });
+    });
+
+    return Promise.all(lookups).then(function(results) {
+      if (window.MD._persistent.uiState.probeActiveRequestId === requestId) {
+        window.MD._persistent.uiState.suppressLookupEvent = false;
+      }
+
+      var effectiveIds = results
+        .filter(function(item) { return item.result && item.result.found; })
+        .map(function(item) { return item.result.dictionaryId || item.dictId; })
+        .filter(function(id, index, all) { return all.indexOf(id) === index; });
+
+      window.MD._persistent.uiState.dictProbeCache = {
+        key: cacheKey,
+        effectiveIds: effectiveIds
+      };
+
+      return effectiveIds.slice();
+    });
+  }
+
+  /**
    * 更新字典计数器显示
    * 格式："N/M"（当前/总数），从 1 开始计数
    * 只有一个或没有字典时隐藏计数器
@@ -567,28 +625,56 @@
    * 切换到上一个字典
    */
   function switchToPrevDictionary() {
-    var dictionaries = getDictionaries();
+    var word;
+    var candidateDicts;
+    var language;
+    var requestId;
+    var currentDictId;
     var currentIndex;
     var prevIndex;
+    var prevId;
     var prevDict;
+    var i;
 
-    if (!dictionaries || dictionaries.length === 0) {
+    word = window.MD.UI.currentWord;
+    if (!word) {
       return;
     }
 
-    currentIndex = getCurrentDictionaryIndex();
-    prevIndex = currentIndex - 1;
-    if (prevIndex < 0) {
-      prevIndex = dictionaries.length - 1; // 循环到最后一个
+    candidateDicts = getDictionaries();
+    if (!candidateDicts || candidateDicts.length === 0) {
+      return;
     }
 
-     prevDict = dictionaries[prevIndex];
-     if (prevDict) {
-       selectDictionary(prevDict.id, prevDict.name);
-       window.MD.UI.currentDictId = prevDict.id;
-       window.MD._persistent.uiState.currentDictId = window.MD.UI.currentDictId;
-       refreshLookup();
-     }
+    language = resolveLookupLanguage(word);
+    requestId = ++window.MD._persistent.uiState.hotzoneToggleRequestId;
+
+    probeEffectiveDictionaryIds(word, candidateDicts, requestId, language).then(function(effectiveIds) {
+      if (!effectiveIds || effectiveIds.length === 0) {
+        return;
+      }
+
+      currentDictId = window.MD.UI.currentDictId;
+      currentIndex = effectiveIds.indexOf(currentDictId);
+      prevIndex = currentIndex - 1;
+      if (prevIndex < 0) {
+        prevIndex = effectiveIds.length - 1;
+      }
+
+      prevId = effectiveIds[prevIndex];
+      for (i = 0; i < candidateDicts.length; i++) {
+        if (candidateDicts[i].id === prevId) {
+          prevDict = candidateDicts[i];
+          break;
+        }
+      }
+      if (prevDict) {
+        selectDictionary(prevDict.id, prevDict.name);
+        window.MD.UI.currentDictId = prevDict.id;
+        window.MD._persistent.uiState.currentDictId = prevDict.id;
+        refreshLookup();
+      }
+    });
   }
 
   /**
