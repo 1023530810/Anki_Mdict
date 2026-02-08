@@ -13,6 +13,15 @@
     window.MD._persistent.loadedLanguages = {};
   }
 
+  if (!window.MD._persistent.stats) {
+    window.MD._persistent.stats = {
+      initCount: 0,
+      initSkipCount: 0,
+      tokenizerHitCount: 0,
+      configCacheHitCount: 0
+    };
+  }
+
   function fetchJson(path) {
     if (window.fetch) {
       return fetch(path).then(function (response) {
@@ -87,17 +96,18 @@
     var autoTokenize = opts.autoTokenize !== false;
     var targetContainer = opts.targetContainer || null;
 
-    var configPromise;
-    var cachedConfig = window.MD._persistent.configCache;
-    if (cachedConfig) {
-      configPromise = fetchJson(configPath)
-        .then(function (freshConfig) {
-          if (freshConfig && freshConfig.version && cachedConfig.version && freshConfig.version === cachedConfig.version) {
-            return cachedConfig;
-          }
-          window.MD._persistent.configCache = freshConfig || {};
-          return window.MD._persistent.configCache;
-        })
+     var configPromise;
+     var cachedConfig = window.MD._persistent.configCache;
+     if (cachedConfig) {
+       configPromise = fetchJson(configPath)
+         .then(function (freshConfig) {
+           if (freshConfig && freshConfig.version && cachedConfig.version && freshConfig.version === cachedConfig.version) {
+             window.MD._persistent.stats.configCacheHitCount++;
+             return cachedConfig;
+           }
+           window.MD._persistent.configCache = freshConfig || {};
+           return window.MD._persistent.configCache;
+         })
         .catch(function () {
           return cachedConfig;
         });
@@ -131,11 +141,13 @@
       });
   }
 
-  function init(options) {
-    if (window.MD._persistent.initPromise) {
-      return window.MD._persistent.initPromise;
-    }
-    window.MD._persistent.initPromise = doInit(options)
+   function init(options) {
+     window.MD._persistent.stats.initCount++;
+     if (window.MD._persistent.initPromise) {
+       window.MD._persistent.stats.initSkipCount++;
+       return window.MD._persistent.initPromise;
+     }
+     window.MD._persistent.initPromise = doInit(options)
       .then(function (result) {
         window.MD._persistent.initPromise = null;
         return result;
@@ -155,10 +167,11 @@
     if (window.MD.State) {
       window.MD.State.initLanguages = initLanguages;
     }
-    initLanguages.forEach(function (language) {
-      if (loadedLanguages[language]) {
-        return;
-      }
+     initLanguages.forEach(function (language) {
+       if (loadedLanguages[language]) {
+         window.MD._persistent.stats.tokenizerHitCount++;
+         return;
+       }
       if (tokenizers[language]) {
         tasks.push(
           window.MD.Tokenizer.init(language).then(function () {
@@ -764,8 +777,11 @@
     };
   }
 
-  window.MD.init = init;
-  window.MD.emit = emit;
-  window.MD.handleTokenClick = handleTokenClick;
-  ensureApiFacade();
+   window.MD.init = init;
+   window.MD.emit = emit;
+   window.MD.handleTokenClick = handleTokenClick;
+   window.MD.getStats = function () {
+     return window.MD._persistent.stats || {};
+   };
+   ensureApiFacade();
 })();
