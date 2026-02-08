@@ -804,49 +804,51 @@
     });
   }
 
-  function bindSearchEvents(elements) {
-    if (!elements || !elements.searchBtn || !elements.searchInput) {
-      return;
-    }
+   function bindSearchEvents(elements) {
+     var debounceTimer;
+     var word;
+     var trimmedWord;
+     var language;
+     
+     if (!elements || !elements.searchBtn || !elements.searchInput) {
+       return;
+     }
 
-    var debounceTimer = null;
+     debounceTimer = null;
 
-    elements.searchBtn.addEventListener('click', function() {
-      var word = elements.searchInput.value;
-      if (word && word.replace(/^\s+|\s+$/g, '') !== '') {
-        clearTimeout(debounceTimer);
-        var trimmedWord = word.replace(/^\s+|\s+$/g, '');
-        var language = resolveLookupLanguage(trimmedWord);
-        lookupAndRender(trimmedWord, null, '', { language: language });
-      }
-    });
+     elements.searchBtn.addEventListener('click', function() {
+       word = elements.searchInput.value;
+       if (word && word.replace(/^\s+|\s+$/g, '') !== '') {
+         clearTimeout(debounceTimer);
+         trimmedWord = word.replace(/^\s+|\s+$/g, '');
+         language = resolveLookupLanguage(trimmedWord);
+         lookupAndRender(trimmedWord, null, '', { language: language });
+       }
+     });
 
-    elements.searchInput.addEventListener('keydown', function(e) {
-      var key = e.key || e.keyCode;
-      var word;
-      var trimmedWord;
-      var language;
-      if (key === 'Enter' || key === 13) {
-        clearTimeout(debounceTimer);
-        word = elements.searchInput.value;
-        if (word && word.replace(/^\s+|\s+$/g, '') !== '') {
-          trimmedWord = word.replace(/^\s+|\s+$/g, '');
-          language = resolveLookupLanguage(trimmedWord);
-          lookupAndRender(trimmedWord, null, '', { language: language });
-        }
-      }
-    });
+     elements.searchInput.addEventListener('keydown', function(e) {
+       var key = e.key || e.keyCode;
+       if (key === 'Enter' || key === 13) {
+         clearTimeout(debounceTimer);
+         word = elements.searchInput.value;
+         if (word && word.replace(/^\s+|\s+$/g, '') !== '') {
+           trimmedWord = word.replace(/^\s+|\s+$/g, '');
+           language = resolveLookupLanguage(trimmedWord);
+           lookupAndRender(trimmedWord, null, '', { language: language });
+         }
+       }
+     });
 
-    elements.searchInput.addEventListener('input', function(e) {
-      clearTimeout(debounceTimer);
-      var word = e.target.value.replace(/^\s+|\s+$/g, '');
-      if (!word) return;
-      debounceTimer = setTimeout(function() {
-        var language = resolveLookupLanguage(word);
-        lookupAndRender(word, null, '', { language: language });
-      }, 500);
-    });
-  }
+     elements.searchInput.addEventListener('input', function(e) {
+       clearTimeout(debounceTimer);
+       word = e.target.value.replace(/^\s+|\s+$/g, '');
+       if (!word) return;
+       debounceTimer = setTimeout(function() {
+         language = resolveLookupLanguage(word);
+         lookupAndRender(word, null, '', { language: language });
+       }, 500);
+     });
+   }
 
   function getHistory() {
     var raw = localStorage.getItem(historyKey);
@@ -864,26 +866,68 @@
     localStorage.setItem(historyKey, JSON.stringify(entries));
   }
 
-  function extractEntryWord(link) {
-    if (!link) return "";
-    var href = link.getAttribute("href") || "";
-    if (!href || href.indexOf("entry://") !== 0) {
-      href = link.href || "";
-    }
-    if (!href || href.indexOf("entry://") !== 0) {
-      return "";
-    }
-    var word = href.slice(8);
-    if (!word) return "";
-    try {
-      word = decodeURIComponent(word);
-    } catch (error) {
-      word = String(word);
-    }
-    return word.trim();
-  }
+   function extractEntryWord(link) {
+     if (!link) return "";
+     var href = link.getAttribute("href") || "";
+     if (!href || href.indexOf("entry://") !== 0) {
+       href = link.href || "";
+     }
+     if (!href || href.indexOf("entry://") !== 0) {
+       return "";
+     }
+     var word = href.slice(8);
+     if (!word) return "";
+     try {
+       word = decodeURIComponent(word);
+     } catch (error) {
+       word = String(word);
+     }
+     return word.trim();
+   }
 
-  function bindEntryLinks(container, input, dictSwitch) {
+   /**
+    * 动态加载所有字典的 CSS 文件
+    * 遍历配置中的字典列表，为每个字典加载其 CSS 文件
+    */
+   function loadDictStyles() {
+     if (!window.MD.State || !window.MD.State.config || !window.MD.State.config.dictionaries) {
+       return;
+     }
+     
+     window.MD.State.config.dictionaries.forEach(function(dict) {
+       if (dict.resources && dict.resources.cssFile) {
+         loadCss(dict.resources.cssFile);
+       }
+     });
+   }
+
+   /**
+    * 动态加载单个 CSS 文件
+    * @param {string} cssFile - CSS 文件路径
+    */
+   function loadCss(cssFile) {
+     var link;
+     
+     if (!window.MD._persistent.uiState.cssLoaded) {
+       window.MD._persistent.uiState.cssLoaded = {};
+     }
+     
+     if (window.MD._persistent.uiState.cssLoaded[cssFile]) {
+       return;
+     }
+     
+     window.MD._persistent.uiState.cssLoaded[cssFile] = true;
+     
+     link = document.createElement('link');
+     link.rel = 'stylesheet';
+     link.href = cssFile;
+     link.onerror = function() {
+       console.warn('[MD] CSS 加载失败:', cssFile);
+     };
+     document.head.appendChild(link);
+   }
+
+   function bindEntryLinks(container, input, dictSwitch) {
     if (!container || container.dataset.mdictEntryBound === "1") {
       return;
     }
