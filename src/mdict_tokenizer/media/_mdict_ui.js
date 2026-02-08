@@ -1067,7 +1067,7 @@
         }
         if (!result.found) {
           elements.contentBody.innerHTML = "<div class=\"md-empty\">未找到释义</div>";
-          elements.content.scrollTop = 0;
+          elements.contentBody.scrollTop = 0;
          if (elements.title) {
            elements.title.textContent = word;
          }
@@ -1083,7 +1083,7 @@
         html = fixCssReferences(result.definition, result.dictionaryId);
         fullHtml = prefixHtml ? prefixHtml + html : html;
         elements.contentBody.innerHTML = "<div class=\"mdict-" + result.dictionaryId + "\">" + fullHtml + "</div>";
-        elements.content.scrollTop = 0;
+        elements.contentBody.scrollTop = 0;
 
        bindEntryLinks(elements.contentBody, elements.searchInput, elements.dictSelect);
 
