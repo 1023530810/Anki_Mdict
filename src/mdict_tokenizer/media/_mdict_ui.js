@@ -678,12 +678,13 @@
           break;
         }
       }
-      if (prevDict) {
-        selectDictionary(prevDict.id, prevDict.name);
-        window.MD.UI.currentDictId = prevDict.id;
-        window.MD._persistent.uiState.currentDictId = prevDict.id;
-        refreshLookup();
-      }
+       if (prevDict) {
+         selectDictionary(prevDict.id, prevDict.name);
+         window.MD.UI.currentDictId = prevDict.id;
+         window.MD._persistent.uiState.currentDictId = prevDict.id;
+         refreshLookup();
+         updateCounter(effectiveIds, prevId);
+       }
     });
   }
 
@@ -734,12 +735,13 @@
           break;
         }
       }
-      if (nextDict) {
-        selectDictionary(nextDict.id, nextDict.name);
-        window.MD.UI.currentDictId = nextDict.id;
-        window.MD._persistent.uiState.currentDictId = nextDict.id;
-        refreshLookup();
-      }
+       if (nextDict) {
+         selectDictionary(nextDict.id, nextDict.name);
+         window.MD.UI.currentDictId = nextDict.id;
+         window.MD._persistent.uiState.currentDictId = nextDict.id;
+         refreshLookup();
+         updateCounter(effectiveIds, nextId);
+       }
     });
   }
 
