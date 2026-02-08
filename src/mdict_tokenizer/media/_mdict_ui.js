@@ -656,70 +656,76 @@
       return;
     }
 
-    language = resolveLookupLanguage(word);
-    requestId = ++window.MD._persistent.uiState.hotzoneToggleRequestId;
+     language = resolveLookupLanguage(word);
+     requestId = ++window.MD._persistent.uiState.hotzoneToggleRequestId;
 
-    probeEffectiveDictionaryIds(word, candidateDicts, requestId, language).then(function(effectiveIds) {
-      if (!effectiveIds || effectiveIds.length === 0) {
-        return;
-      }
-
-      currentDictId = window.MD.UI.currentDictId;
-      currentIndex = effectiveIds.indexOf(currentDictId);
-      prevIndex = currentIndex - 1;
-      if (prevIndex < 0) {
-        prevIndex = effectiveIds.length - 1;
-      }
-
-      prevId = effectiveIds[prevIndex];
-      for (i = 0; i < candidateDicts.length; i++) {
-        if (candidateDicts[i].id === prevId) {
-          prevDict = candidateDicts[i];
-          break;
-        }
-      }
-       if (prevDict) {
-         selectDictionary(prevDict.id, prevDict.name);
-         window.MD.UI.currentDictId = prevDict.id;
-         window.MD._persistent.uiState.currentDictId = prevDict.id;
-         refreshLookup();
-         updateCounter(effectiveIds, prevId);
+     probeEffectiveDictionaryIds(word, candidateDicts, requestId, language).then(function(effectiveIds) {
+       if (window.MD._persistent.uiState.hotzoneToggleRequestId !== requestId) {
+         return;
        }
-    });
-  }
+       if (!effectiveIds || effectiveIds.length === 0) {
+         return;
+       }
 
-  /**
-   * 切换到下一个字典
-   */
-  function switchToNextDictionary() {
-    var word;
-    var candidateDicts;
-    var language;
-    var requestId;
-    var currentDictId;
-    var currentIndex;
-    var nextIndex;
-    var nextId;
-    var nextDict;
-    var i;
+       currentDictId = window.MD.UI.currentDictId;
+       currentIndex = effectiveIds.indexOf(currentDictId);
+       prevIndex = currentIndex - 1;
+       if (prevIndex < 0) {
+         prevIndex = effectiveIds.length - 1;
+       }
 
-    word = window.MD.UI.currentWord;
-    if (!word) {
-      return;
-    }
+       prevId = effectiveIds[prevIndex];
+       for (i = 0; i < candidateDicts.length; i++) {
+         if (candidateDicts[i].id === prevId) {
+           prevDict = candidateDicts[i];
+           break;
+         }
+       }
+        if (prevDict) {
+          selectDictionary(prevDict.id, prevDict.name);
+          window.MD.UI.currentDictId = prevDict.id;
+          window.MD._persistent.uiState.currentDictId = prevDict.id;
+          refreshLookup();
+          updateCounter(effectiveIds, prevId);
+        }
+     });
+   }
 
-    candidateDicts = getDictionaries();
-    if (!candidateDicts || candidateDicts.length === 0) {
-      return;
-    }
+   /**
+    * 切换到下一个字典
+    */
+   function switchToNextDictionary() {
+     var word;
+     var candidateDicts;
+     var language;
+     var requestId;
+     var currentDictId;
+     var currentIndex;
+     var nextIndex;
+     var nextId;
+     var nextDict;
+     var i;
 
-    language = resolveLookupLanguage(word);
-    requestId = ++window.MD._persistent.uiState.hotzoneToggleRequestId;
+     word = window.MD.UI.currentWord;
+     if (!word) {
+       return;
+     }
 
-    probeEffectiveDictionaryIds(word, candidateDicts, requestId, language).then(function(effectiveIds) {
-      if (!effectiveIds || effectiveIds.length === 0) {
-        return;
-      }
+     candidateDicts = getDictionaries();
+     if (!candidateDicts || candidateDicts.length === 0) {
+       return;
+     }
+
+     language = resolveLookupLanguage(word);
+     requestId = ++window.MD._persistent.uiState.hotzoneToggleRequestId;
+
+     probeEffectiveDictionaryIds(word, candidateDicts, requestId, language).then(function(effectiveIds) {
+       if (window.MD._persistent.uiState.hotzoneToggleRequestId !== requestId) {
+         return;
+       }
+       if (!effectiveIds || effectiveIds.length === 0) {
+         return;
+       }
 
       currentDictId = window.MD.UI.currentDictId;
       currentIndex = effectiveIds.indexOf(currentDictId);
