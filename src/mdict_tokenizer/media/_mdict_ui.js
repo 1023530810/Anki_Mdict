@@ -12,6 +12,48 @@
     window.MD._persistent.uiState = {};
   }
 
+  // Feature 1: 字典探测缓存（用于快速判断可用字典）
+  if (!window.MD._persistent.uiState.dictProbeCache) {
+    window.MD._persistent.uiState.dictProbeCache = null;
+  }
+  if (!window.MD._persistent.uiState.probeActiveRequestId) {
+    window.MD._persistent.uiState.probeActiveRequestId = null;
+  }
+  if (typeof window.MD._persistent.uiState.suppressLookupEvent === 'undefined') {
+    window.MD._persistent.uiState.suppressLookupEvent = false;
+  }
+
+  // Feature 2: 有效字典计数器（用于追踪字典数量变化）
+  if (!window.MD._persistent.uiState.counterRequestId) {
+    window.MD._persistent.uiState.counterRequestId = 0;
+  }
+
+  // Feature 3: 竞态保护（用于 last-request-wins 模式）
+  if (!window.MD._persistent.uiState.lookupRequestId) {
+    window.MD._persistent.uiState.lookupRequestId = 0;
+  }
+  if (!window.MD._persistent.uiState.hotzoneToggleRequestId) {
+    window.MD._persistent.uiState.hotzoneToggleRequestId = 0;
+  }
+
+  // Feature 4: Token 选中高亮（用于记录当前选中的分词 token）
+  if (!window.MD._persistent.uiState.currentSelectedToken) {
+    window.MD._persistent.uiState.currentSelectedToken = null;
+  }
+
+  // Feature 6: CSS 自动加载（用于追踪已加载的字典样式）
+  if (!window.MD._persistent.uiState.cssLoaded) {
+    window.MD._persistent.uiState.cssLoaded = {};
+  }
+
+  // Feature 7: 首选字典记忆（用于记住用户最后选择的字典）
+  if (!window.MD._persistent.uiState.preferredDictId) {
+    window.MD._persistent.uiState.preferredDictId = '';
+  }
+  if (!window.MD._persistent.uiState.preferredDictWord) {
+    window.MD._persistent.uiState.preferredDictWord = '';
+  }
+
   var historyKey = "mdict_history";
   var panelEl = window.MD._persistent.uiState.panelEl || null;
   var modalEl = window.MD._persistent.uiState.modalEl || null;
@@ -128,6 +170,11 @@
   function ensurePanel() {
     // Case 1: panelEl exists AND is still in the DOM → reuse
     if (panelEl && document.contains(panelEl)) {
+      // Sync references in case window.MD.UI was re-assigned
+      window.MD.UI.panel = panelEl;
+      if (window.MD._persistent.uiState.elements) {
+        window.MD.UI.elements = window.MD._persistent.uiState.elements;
+      }
       return panelEl;
     }
 
@@ -193,6 +240,7 @@
 
     window.MD.UI.panel = panelEl;
     window.MD.UI.elements = elements;
+    window.MD._persistent.uiState.elements = elements;
 
      bindDropdownEvents(elements);
      bindHotzoneEvents(elements);
@@ -635,18 +683,24 @@
       var word = elements.searchInput.value;
       if (word && word.replace(/^\s+|\s+$/g, '') !== '') {
         clearTimeout(debounceTimer);
-        lookupAndRender(word.replace(/^\s+|\s+$/g, ''), null, '', {});
+        var trimmedWord = word.replace(/^\s+|\s+$/g, '');
+        var language = resolveLookupLanguage(trimmedWord);
+        lookupAndRender(trimmedWord, null, '', { language: language });
       }
     });
 
     elements.searchInput.addEventListener('keydown', function(e) {
       var key = e.key || e.keyCode;
       var word;
+      var trimmedWord;
+      var language;
       if (key === 'Enter' || key === 13) {
         clearTimeout(debounceTimer);
         word = elements.searchInput.value;
         if (word && word.replace(/^\s+|\s+$/g, '') !== '') {
-          lookupAndRender(word.replace(/^\s+|\s+$/g, ''), null, '', {});
+          trimmedWord = word.replace(/^\s+|\s+$/g, '');
+          language = resolveLookupLanguage(trimmedWord);
+          lookupAndRender(trimmedWord, null, '', { language: language });
         }
       }
     });
@@ -656,7 +710,8 @@
       var word = e.target.value.replace(/^\s+|\s+$/g, '');
       if (!word) return;
       debounceTimer = setTimeout(function() {
-        lookupAndRender(word, null, '', {});
+        var language = resolveLookupLanguage(word);
+        lookupAndRender(word, null, '', { language: language });
       }, 500);
     });
   }
@@ -733,6 +788,32 @@
     });
   }
 
+  function detectLanguage(word) {
+    if (!word) {
+      return null;
+    }
+    if (/[\u3040-\u309F\u30A0-\u30FF\u3400-\u4DBF\u4E00-\u9FFF]/.test(word)) {
+      return 'ja';
+    }
+    if (/[a-zA-Z]/.test(word)) {
+      return 'en';
+    }
+    return null;
+  }
+
+  function resolveLookupLanguage(word) {
+    var lastLanguage = window.MD._persistent.uiState.lastLookupLanguage || null;
+    if (!word) {
+      return lastLanguage;
+    }
+    var detected = detectLanguage(word);
+    if (detected) {
+      window.MD._persistent.uiState.lastLookupLanguage = detected;
+      return detected;
+    }
+    return lastLanguage;
+  }
+
   function getLastLookupLanguage() {
     return window.MD && window.MD.State ? window.MD.State.lastLookupLanguage : null;
   }
@@ -750,7 +831,6 @@
   function lookupAndRender(word, dictionaryId, prefixHtml, options) {
     var panel = ensurePanel();
     var elements = window.MD.UI.elements;
-    var lastLanguage = null;
 
     if (!elements || !elements.contentBody) {
       if (window.console && window.console.error) {
@@ -770,12 +850,11 @@
     
     var lookupOptions = options || {};
     if (!lookupOptions.language) {
-      lastLanguage = getLastLookupLanguage();
-      if (lastLanguage) {
-        lookupOptions.language = lastLanguage;
-      }
+      lookupOptions.language = resolveLookupLanguage(word);
     }
-    setLastLookupLanguage(lookupOptions.language);
+    if (lookupOptions.language) {
+      window.MD._persistent.uiState.lastLookupLanguage = lookupOptions.language;
+    }
     window.MD.Dictionary.lookup(word, dictionaryId, lookupOptions).then(function (result) {
        if (!result.found) {
          elements.contentBody.innerHTML = "<div class=\"md-empty\">未找到释义</div>";
