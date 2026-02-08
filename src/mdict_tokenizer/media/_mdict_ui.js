@@ -958,11 +958,13 @@
     var panel = ensurePanel();
     var elements = window.MD.UI.elements;
     var requestId;
+    var lookupRequestId;
     var lookupOptions;
     var html;
     var fullHtml;
 
     requestId = ++window.MD._persistent.uiState.counterRequestId;
+    lookupRequestId = ++window.MD._persistent.uiState.lookupRequestId;
 
     if (!elements || !elements.contentBody) {
       if (window.console && window.console.error) {
@@ -987,7 +989,10 @@
      if (lookupOptions.language) {
        window.MD._persistent.uiState.lastLookupLanguage = lookupOptions.language;
      }
-     window.MD.Dictionary.lookup(word, dictionaryId, lookupOptions).then(function (result) {
+      window.MD.Dictionary.lookup(word, dictionaryId, lookupOptions).then(function (result) {
+        if (window.MD._persistent.uiState.lookupRequestId !== lookupRequestId) {
+          return;
+        }
         if (!result.found) {
           elements.contentBody.innerHTML = "<div class=\"md-empty\">未找到释义</div>";
           elements.content.scrollTop = 0;
