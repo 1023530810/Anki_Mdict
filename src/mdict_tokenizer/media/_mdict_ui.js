@@ -1035,6 +1035,9 @@
       
       window.MD.UI.currentWord = word;
       window.MD._persistent.uiState.currentWord = window.MD.UI.currentWord;
+      if (elements.searchInput) {
+        elements.searchInput.value = word;
+      }
       if (dictionaryId) {
         window.MD.UI.currentDictId = dictionaryId;
         window.MD._persistent.uiState.currentDictId = window.MD.UI.currentDictId;

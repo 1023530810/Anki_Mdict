@@ -406,6 +406,8 @@
 .md-dropdown {
   position: absolute;
   min-width: 100%;
+  max-height: 150px;
+  overflow-y: auto;
   top: calc(100% + 4px);
   bottom: auto;
   left: 50%;
@@ -414,10 +416,10 @@
   background: var(--md-card-bg);
   border-radius: 8px !important;
   box-shadow: 0 4px 12px var(--md-card-shadow);
-  padding: 8px;
+  padding: 4px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   box-sizing: border-box;
 }
 
@@ -426,13 +428,14 @@
 }
 
 .md-dropdown .md-dropdown-option {
-  padding: 8px 16px;
+  padding: 5px 10px;
   border: none;
+  margin: 5px;
   border-radius: 4px !important;
   background: transparent;
   color: var(--md-text-primary);
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   white-space: nowrap;
   outline: none;
   text-align: center;
@@ -485,7 +488,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px !important;
   transition: background 0.2s, color 0.2s;
   box-sizing: border-box;
 }
