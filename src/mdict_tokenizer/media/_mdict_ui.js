@@ -328,6 +328,12 @@
         dictName: dictName
       });
     }
+
+    var currentWord = window.MD.UI.currentWord;
+    if (currentWord) {
+      window.MD._persistent.uiState.preferredDictId = dictId;
+      window.MD._persistent.uiState.preferredDictWord = currentWord;
+    }
   }
 
   function updateDropdownOptions(dropdownEl) {
@@ -1012,6 +1018,8 @@
     var lookupOptions;
     var html;
     var fullHtml;
+    var shouldUsePreferred;
+    var dictId;
 
     requestId = ++window.MD._persistent.uiState.counterRequestId;
     lookupRequestId = ++window.MD._persistent.uiState.lookupRequestId;
@@ -1032,14 +1040,25 @@
         window.MD._persistent.uiState.currentDictId = window.MD.UI.currentDictId;
       }
      
-     lookupOptions = options || {};
+      shouldUsePreferred = window.MD._persistent.uiState.preferredDictId &&
+                           window.MD._persistent.uiState.preferredDictWord &&
+                           window.MD._persistent.uiState.preferredDictWord === word;
+      
+      if (!shouldUsePreferred && window.MD._persistent.uiState.preferredDictId) {
+        window.MD._persistent.uiState.preferredDictId = '';
+        window.MD._persistent.uiState.preferredDictWord = '';
+      }
+      
+      dictId = shouldUsePreferred ? window.MD._persistent.uiState.preferredDictId : dictionaryId;
+      
+      lookupOptions = options || {};
      if (!lookupOptions.language) {
        lookupOptions.language = resolveLookupLanguage(word);
      }
-     if (lookupOptions.language) {
-       window.MD._persistent.uiState.lastLookupLanguage = lookupOptions.language;
-     }
-      window.MD.Dictionary.lookup(word, dictionaryId, lookupOptions).then(function (result) {
+      if (lookupOptions.language) {
+        window.MD._persistent.uiState.lastLookupLanguage = lookupOptions.language;
+      }
+       window.MD.Dictionary.lookup(word, dictId, lookupOptions).then(function (result) {
         if (window.MD._persistent.uiState.lookupRequestId !== lookupRequestId) {
           return;
         }

@@ -83,7 +83,7 @@ def test_lookup_language_threads_through_flow() -> None:
         main_content,
     )
     assert re.search(
-        r"Dictionary\.lookup\(word,\s*dictionaryId,\s*lookupOptions\)", ui_content
+        r"Dictionary\.lookup\(word,\s*dictId,\s*lookupOptions\)", ui_content
     )
 
 
