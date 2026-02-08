@@ -39,9 +39,7 @@ def test_feature3_race_protection():
 def test_feature4_token_selected():
     """Feature 4: Token 选中高亮"""
     ui_js = Path("src/mdict_tokenizer/media/_mdict_ui.js").read_text()
-    style_css = Path(
-        "Anki_Mdict/src/mdict_tokenizer/media/_mdict_style.css"
-    ).read_text()
+    style_css = Path("src/mdict_tokenizer/media/_mdict_style.css").read_text()
     assert ui_js.count("md-selected") >= 3  # add, remove, clear
     assert "md-selected" in style_css
 
