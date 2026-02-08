@@ -1129,11 +1129,7 @@
       window.MD._persistent.uiState.currentSelectedToken.classList.remove('md-selected');
       window.MD._persistent.uiState.currentSelectedToken = null;
     }
-  }
-    if (overlayEl) {
-      overlayEl.classList.remove('md-modal-visible');
-      overlayEl.classList.add('md-modal-hidden');
-    }
+    
     if (panelEl && window.MD.UI.getMode() === 'embedded') {
       panelEl.style.display = 'none';
     }
