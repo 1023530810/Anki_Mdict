@@ -566,48 +566,28 @@
     });
   }
 
-  /**
-   * 更新字典计数器显示
-   * 格式："N/M"（当前/总数），从 1 开始计数
-   * 只有一个或没有字典时隐藏计数器
-   */
-  function updateCounter() {
-    var elements = window.MD.UI.elements;
-    var counterEl;
-    var dicts;
-    var currentIndex;
-    var currentNum;
-    var totalNum;
+   /**
+    * 更新字典计数器显示
+    * 格式："N/M"（当前/总数），从 1 开始计数
+    * 只有一个或没有字典时隐藏计数器
+    * @param {Array} effectiveIds - 有结果的字典 ID 列表
+    * @param {string} selectedId - 当前选中的字典 ID
+    */
+   function updateCounter(effectiveIds, selectedId) {
+     var counterEl = window.MD.UI.elements.counter;
+     if (!counterEl) return;
 
-    if (!elements) {
-      return;
-    }
+     if (!effectiveIds || effectiveIds.length <= 1) {
+       counterEl.textContent = '';
+       counterEl.classList.add('md-hidden');
+       return;
+     }
 
-    counterEl = elements.counter;
-    if (!counterEl) {
-      return;
-    }
-
-    // 获取字典列表
-    dicts = getDictionaries();
-
-    // 只有一个或没有字典时隐藏计数器
-    if (!dicts || dicts.length <= 1) {
-      counterEl.classList.add('md-hidden');
-      return;
-    }
-
-    // 显示计数器
-    counterEl.classList.remove('md-hidden');
-
-    // 计算当前索引（从 1 开始显示）
-    currentIndex = getCurrentDictionaryIndex();
-    currentNum = currentIndex + 1;
-    totalNum = dicts.length;
-
-    // 更新计数器文本："N/M"
-    counterEl.textContent = String(currentNum) + '/' + String(totalNum);
-  }
+     var currentIndex = effectiveIds.indexOf(selectedId);
+     var currentNum = currentIndex >= 0 ? currentIndex + 1 : 1;
+     counterEl.textContent = currentNum + '/' + effectiveIds.length;
+     counterEl.classList.remove('md-hidden');
+   }
 
   /**
    * 刷新查词结果
