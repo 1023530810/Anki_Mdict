@@ -239,7 +239,7 @@
         prefixHtml += "<div class=\"md-token-ipa\">" + token.ipa + "</div>";
       }
     }
-    window.MD.UI.lookupFromToken(word, null, prefixHtml, language);
+    window.MD.UI.lookupFromToken(word, null, prefixHtml, language, element);
   }
 
   function supportsLanguage(dict, language) {

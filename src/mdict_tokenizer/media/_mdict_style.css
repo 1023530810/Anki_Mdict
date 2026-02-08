@@ -507,23 +507,11 @@
   color: var(--md-text-primary);
   line-height: 1.6;
   text-align: left;
+  scrollbar-width: none;
 }
 
 .md-panel-content::-webkit-scrollbar {
-  width: 6px;
-}
-
-.md-panel-content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.md-panel-content::-webkit-scrollbar-thumb {
-  background: var(--md-scrollbar-thumb);
-  border-radius: 3px;
-}
-
-.md-panel-content::-webkit-scrollbar-thumb:hover {
-  background: var(--md-scrollbar-thumb-hover);
+  display: none;
 }
 
 /* --------------------------------------------------------------------------
@@ -745,4 +733,10 @@
 
 .md-counter-large {
   font-size: 14px;
+}
+
+/* Token 选中高亮 */
+.md-token.md-selected {
+  background: var(--md-token-highlight, rgba(255, 215, 0, 0.3));
+  border-radius: 2px;
 }
