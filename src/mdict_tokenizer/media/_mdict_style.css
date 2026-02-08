@@ -734,3 +734,9 @@
 .md-counter-large {
   font-size: 14px;
 }
+
+/* Token 选中高亮 */
+.md-token.md-selected {
+  background: var(--md-token-highlight, rgba(255, 215, 0, 0.3));
+  border-radius: 2px;
+}
