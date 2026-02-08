@@ -587,12 +587,42 @@
      var currentNum = currentIndex >= 0 ? currentIndex + 1 : 1;
      counterEl.textContent = currentNum + '/' + effectiveIds.length;
      counterEl.classList.remove('md-hidden');
+    }
+
+   /**
+    * 刷新查词后的计数器
+    * @param {string} word - 要查的词
+    * @param {number} requestId - 请求 ID，用于防止竞态
+    */
+   function refreshCounterForWord(word, requestId) {
+     var language, candidateDicts, container, displayId;
+
+     if (!word) {
+       updateCounter([], null);
+       return;
+     }
+
+     language = resolveLookupLanguage(word);
+     candidateDicts = getDictionaries();
+
+     if (!candidateDicts.length) {
+       updateCounter([], null);
+       return;
+     }
+
+     probeEffectiveDictionaryIds(word, candidateDicts, requestId, language).then(function(effectiveIds) {
+       if (window.MD._persistent.uiState.counterRequestId !== requestId) return;
+
+       container = document.querySelector('.md-panel-dict-select-wrapper');
+       displayId = container ? container.dataset.selectedId : null;
+       updateCounter(effectiveIds, displayId);
+     });
    }
 
-  /**
-   * 刷新查词结果
-   */
-  function refreshLookup() {
+   /**
+    * 刷新查词结果
+    */
+   function refreshLookup() {
     var currentWord = window.MD.UI.currentWord;
     var currentDictId = window.MD.UI.currentDictId;
 
