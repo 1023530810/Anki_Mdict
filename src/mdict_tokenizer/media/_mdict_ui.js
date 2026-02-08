@@ -1336,43 +1336,46 @@
     panel.innerHTML = html;
   }
 
-  function lookupFromToken(word, dictionaryId, prefixHtml, language) {
-    var mode;
-    var elements;
+   function lookupFromToken(word, dictionaryId, prefixHtml, language, element) {
+     var mode;
+     var elements;
 
-    // 1. 确保面板存在
-    ensurePanel();
+     if (window.MD._persistent.uiState.currentSelectedToken) {
+       window.MD._persistent.uiState.currentSelectedToken.classList.remove('md-selected');
+     }
+     if (element) {
+       element.classList.add('md-selected');
+       window.MD._persistent.uiState.currentSelectedToken = element;
+     }
 
-    if (panelEl) {
-      panelEl.style.display = '';
-    }
+     ensurePanel();
 
-    // 2. 如果是弹窗模式，显示模态弹窗
-    mode = window.MD.UI.getMode();
-    if (mode === 'modal' && modalEl) {
-      modalEl.classList.add('md-modal-visible');
-      modalEl.classList.remove('md-modal-hidden');
-      if (overlayEl) {
-        overlayEl.classList.add('md-modal-visible');
-        overlayEl.classList.remove('md-modal-hidden');
-      }
-    }
+     if (panelEl) {
+       panelEl.style.display = '';
+     }
 
-    // 3. 更新标题
-    elements = window.MD.UI.elements;
-    if (elements && elements.title) {
-      elements.title.textContent = word;
-    }
+     mode = window.MD.UI.getMode();
+     if (mode === 'modal' && modalEl) {
+       modalEl.classList.add('md-modal-visible');
+       modalEl.classList.remove('md-modal-hidden');
+       if (overlayEl) {
+         overlayEl.classList.add('md-modal-visible');
+         overlayEl.classList.remove('md-modal-hidden');
+       }
+     }
 
-    // 4. 显示加载中
-    if (elements && elements.contentBody) {
-      elements.contentBody.innerHTML = '<div class="md-loading">加载中...</div>';
-    }
+     elements = window.MD.UI.elements;
+     if (elements && elements.title) {
+       elements.title.textContent = word;
+     }
 
-    // 5. 设置语言并执行查词
-    setLastLookupLanguage(language);
-    lookupAndRender(word, dictionaryId, prefixHtml, { language: language });
-  }
+     if (elements && elements.contentBody) {
+       elements.contentBody.innerHTML = '<div class="md-loading">加载中...</div>';
+     }
+
+     setLastLookupLanguage(language);
+     lookupAndRender(word, dictionaryId, prefixHtml, { language: language });
+   }
 
   /**
    * MD.UI - 用户界面模块
