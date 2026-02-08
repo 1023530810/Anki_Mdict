@@ -681,28 +681,56 @@
    * 切换到下一个字典
    */
   function switchToNextDictionary() {
-    var dictionaries = getDictionaries();
+    var word;
+    var candidateDicts;
+    var language;
+    var requestId;
+    var currentDictId;
     var currentIndex;
     var nextIndex;
+    var nextId;
     var nextDict;
+    var i;
 
-    if (!dictionaries || dictionaries.length === 0) {
+    word = window.MD.UI.currentWord;
+    if (!word) {
       return;
     }
 
-    currentIndex = getCurrentDictionaryIndex();
-    nextIndex = currentIndex + 1;
-    if (nextIndex >= dictionaries.length) {
-      nextIndex = 0; // 循环到第一个
+    candidateDicts = getDictionaries();
+    if (!candidateDicts || candidateDicts.length === 0) {
+      return;
     }
 
-     nextDict = dictionaries[nextIndex];
-     if (nextDict) {
-       selectDictionary(nextDict.id, nextDict.name);
-       window.MD.UI.currentDictId = nextDict.id;
-       window.MD._persistent.uiState.currentDictId = window.MD.UI.currentDictId;
-       refreshLookup();
-     }
+    language = resolveLookupLanguage(word);
+    requestId = ++window.MD._persistent.uiState.hotzoneToggleRequestId;
+
+    probeEffectiveDictionaryIds(word, candidateDicts, requestId, language).then(function(effectiveIds) {
+      if (!effectiveIds || effectiveIds.length === 0) {
+        return;
+      }
+
+      currentDictId = window.MD.UI.currentDictId;
+      currentIndex = effectiveIds.indexOf(currentDictId);
+      nextIndex = currentIndex + 1;
+      if (nextIndex >= effectiveIds.length) {
+        nextIndex = 0;
+      }
+
+      nextId = effectiveIds[nextIndex];
+      for (i = 0; i < candidateDicts.length; i++) {
+        if (candidateDicts[i].id === nextId) {
+          nextDict = candidateDicts[i];
+          break;
+        }
+      }
+      if (nextDict) {
+        selectDictionary(nextDict.id, nextDict.name);
+        window.MD.UI.currentDictId = nextDict.id;
+        window.MD._persistent.uiState.currentDictId = nextDict.id;
+        refreshLookup();
+      }
+    });
   }
 
   /**
