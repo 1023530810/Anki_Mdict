@@ -178,7 +178,7 @@
 .md-token {
   cursor: pointer;
   padding: 0 2px;
-  font-size: var(--md-font-size);
+  font-size: inherit;
 }
 
 .md-token-style-underline {
@@ -268,6 +268,24 @@
 /* ==========================================================================
    嵌入式面板样式（.md-panel）— 对齐 ListenSpeak 字典面板布局
    ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   嵌入式容器 — 自动填充父容器空间
+   -------------------------------------------------------------------------- */
+#mdict-panel {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#mdict-panel > .md-panel {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
 
 /* --------------------------------------------------------------------------
    主容器
@@ -516,9 +534,13 @@
 }
 
 .md-panel-content-body {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   padding: 15px;
   overflow-y: auto;
-  height: 100%;
   box-sizing: border-box;
   scrollbar-width: none;
 }
