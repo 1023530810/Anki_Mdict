@@ -1006,7 +1006,9 @@
         source: "manual",
       });
       if (window.MD && typeof window.MD.emit === "function") {
-        window.MD.emit("md:lookup", { word: word, result: result });
+        if (!window.MD._persistent.uiState.suppressLookupEvent) {
+          window.MD.emit("md:lookup", { word: word, result: result });
+        }
       }
       updateCounter();
     });
