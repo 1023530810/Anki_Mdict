@@ -1517,6 +1517,27 @@
     body.appendChild(buildDictionarySection(config));
     body.appendChild(buildFeatureSection(config));
 
+    var historyToggle = document.createElement("button");
+    historyToggle.className = "md-config-toggle" + (config.enableHistory ? " active" : "");
+    historyToggle.textContent = config.enableHistory ? "开启" : "关闭";
+    historyToggle.addEventListener("click", function () {
+      var newVal = !window.MD.Config.get("enableHistory");
+      window.MD.Config.set("enableHistory", newVal);
+      historyToggle.classList.toggle("active", newVal);
+      historyToggle.textContent = newVal ? "开启" : "关闭";
+      if (!newVal) {
+        window.MD.History.clear();
+        if (elements.historyBtn) {
+          elements.historyBtn.style.display = "none";
+        }
+      } else {
+        if (elements.historyBtn) {
+          elements.historyBtn.style.display = "";
+        }
+      }
+    });
+    body.appendChild(createRow("历史查询", historyToggle));
+
     var lemmaToggle = document.createElement("button");
     lemmaToggle.className = "md-config-toggle" + (config.extractLemma ? " active" : "");
     lemmaToggle.textContent = config.extractLemma ? "开启" : "关闭";
