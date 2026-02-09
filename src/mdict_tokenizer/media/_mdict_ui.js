@@ -1239,10 +1239,6 @@
       window.MD._persistent.uiState.currentSelectedToken.classList.remove('md-selected');
       window.MD._persistent.uiState.currentSelectedToken = null;
     }
-    
-    if (panelEl && window.MD.UI.getMode() === 'embedded') {
-      panelEl.style.display = 'none';
-    }
   }
 
   function applyFontSize(config) {

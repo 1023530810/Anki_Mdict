@@ -133,6 +133,9 @@
         return null;
       })
       .then(function () {
+        if (window.MD.UI && window.MD.UI.isEmbedded()) {
+          window.MD.UI.ensurePanel();
+        }
         emit("md:ready", {});
       })
       .catch(function (error) {
