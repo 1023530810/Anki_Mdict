@@ -1203,7 +1203,7 @@
          word: word,
          dictionaryId: result.dictionaryId,
          timestamp: Date.now(),
-         source: "manual",
+         source: (options && options.source) || "manual",
        });
        if (window.MD && typeof window.MD.emit === "function") {
          if (!window.MD._persistent.uiState.suppressLookupEvent) {
@@ -1692,7 +1692,7 @@
         metaSpan.className = "md-history-meta";
         
         var timeStr = formatRelativeTime(entry.timestamp);
-        var sourceStr = entry.source === "manual" ? "手动查询" : "自动查询";
+        var sourceStr = entry.source === "token" ? "分词查询" : "手动查询";
         metaSpan.textContent = timeStr + " · " + sourceStr;
         
         item.appendChild(wordSpan);
@@ -1764,7 +1764,7 @@
      }
 
      setLastLookupLanguage(language);
-     lookupAndRender(word, dictionaryId, prefixHtml, { language: language });
+     lookupAndRender(word, dictionaryId, prefixHtml, { language: language, source: "token" });
    }
 
   /**
