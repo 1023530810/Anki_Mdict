@@ -180,6 +180,12 @@
   }
 
   function ensurePanel() {
+    var mode;
+    var elements;
+    var container;
+    var savedConfig;
+    var heightClass;
+
     // Case 1: panelEl exists AND is still in the DOM → reuse
     if (panelEl && document.contains(panelEl)) {
       // Sync references in case window.MD.UI was re-assigned
@@ -204,9 +210,8 @@
       }
     }
 
-    var mode = window.MD.UI.getMode();
-    var elements = createPanelElements();
-    var container;
+    mode = window.MD.UI.getMode();
+    elements = createPanelElements();
 
     if (mode === 'embedded') {
       container = window.MD.UI.container;
@@ -236,7 +241,11 @@
        overlayEl.className = 'md-modal-overlay md-modal-hidden';
 
        modalEl = document.createElement('div');
-       modalEl.className = 'md-modal md-modal-medium md-modal-hidden';
+       modalEl.className = 'md-modal md-modal-hidden';
+
+       savedConfig = window.MD && window.MD.Config ? window.MD.Config.getAll() : null;
+       heightClass = savedConfig && savedConfig.popupHeight ? 'md-modal-' + savedConfig.popupHeight : 'md-modal-medium';
+       modalEl.classList.add(heightClass);
 
        modalEl.appendChild(elements.panel);
 
@@ -1259,8 +1268,20 @@
     document.documentElement.style.setProperty("--md-font-size", config.fontSize + "px");
   }
 
+  function applyPopupHeight(config) {
+    if (!modalEl || !config || !config.popupHeight) {
+      return;
+    }
+    var heightClasses = ['md-modal-small', 'md-modal-medium', 'md-modal-large', 'md-modal-full'];
+    heightClasses.forEach(function(cls) {
+      modalEl.classList.remove(cls);
+    });
+    modalEl.classList.add('md-modal-' + config.popupHeight);
+  }
+
   function applyConfig(config) {
     applyFontSize(config);
+    applyPopupHeight(config);
     if (window.MD && window.MD.Tokenizer && window.MD.Tokenizer.updateTokenDisplay) {
       window.MD.Tokenizer.updateTokenDisplay(config);
     }
@@ -1484,6 +1505,7 @@
         config.popupHeight,
         function(value) {
           window.MD.Config.set("popupHeight", value);
+          applyConfig(window.MD.Config.getAll());
         }
       );
       body.appendChild(createRow("弹窗高度", heightSelect));
