@@ -168,6 +168,7 @@ class DictManagerDialog:
         # 分词选项区域
         self.extract_lemma_box = qt["QCheckBox"]("提取单词原型（词根）")
         self.show_pronunciation_box = qt["QCheckBox"]("显示发音标注")
+        self.show_pronunciation_label = qt["QLabel"]("显示发音标注")
 
         tokenizer_group = qt["QGroupBox"]("分词选项")
         tokenizer_layout = qt["QHBoxLayout"]()
@@ -316,15 +317,22 @@ class DictManagerDialog:
         self.extract_lemma_box.setChecked(
             tokenizer.extract_lemma if tokenizer else True
         )
-        # 根据语言设置发音标注复选框
+        # 根据语言设置发音标注复选框和标签
         if language == "ja":
+            self.show_pronunciation_box.setText("显示注音")
             self.show_pronunciation_box.setChecked(
                 tokenizer.show_reading if tokenizer else False
             )
-        else:  # en
+        elif language == "en":
+            self.show_pronunciation_box.setText("显示音标")
             self.show_pronunciation_box.setChecked(
                 tokenizer.show_ipa if tokenizer else False
             )
+        else:
+            # 其他语言默认显示为"显示发音标注"
+            self.show_pronunciation_box.setText("显示发音标注")
+            self.show_pronunciation_box.setChecked(False)
+            self.show_pronunciation_box.setEnabled(False)
 
         dictionaries = [
             dictionary
@@ -697,36 +705,48 @@ class DictManagerDialog:
 
         config = load_config(self.media_dir)
         tokenizer = config.tokenizers.get(language)
+
+        # 根据语言类型构建分词配置
+        extract_lemma = self.extract_lemma_box.isChecked()
+        pronunciation_checked = self.show_pronunciation_box.isChecked()
+
         if tokenizer:
+            # 更新现有配置
             tokenizer = replace(
                 tokenizer,
-                extract_lemma=self.extract_lemma_box.isChecked(),
+                extract_lemma=extract_lemma,
                 dictionary_ids=ordered_ids,
             )
             if language == "ja":
-                tokenizer = replace(
-                    tokenizer,
-                    show_reading=self.show_pronunciation_box.isChecked(),
-                )
-            else:
-                tokenizer = replace(
-                    tokenizer,
-                    show_ipa=self.show_pronunciation_box.isChecked(),
-                )
+                tokenizer = replace(tokenizer, show_reading=pronunciation_checked)
+            elif language == "en":
+                tokenizer = replace(tokenizer, show_ipa=pronunciation_checked)
             config.tokenizers[language] = tokenizer
         else:
+            # 创建新配置
             if language == "ja":
                 tokenizer = TokenizerConfig(
                     language=language,
-                    extract_lemma=self.extract_lemma_box.isChecked(),
-                    show_reading=self.show_pronunciation_box.isChecked(),
+                    extract_lemma=extract_lemma,
+                    show_reading=pronunciation_checked,
+                    show_ipa=False,
+                    dictionary_ids=ordered_ids,
+                )
+            elif language == "en":
+                tokenizer = TokenizerConfig(
+                    language=language,
+                    extract_lemma=extract_lemma,
+                    show_reading=False,
+                    show_ipa=pronunciation_checked,
                     dictionary_ids=ordered_ids,
                 )
             else:
+                # 其他语言使用默认配置
                 tokenizer = TokenizerConfig(
                     language=language,
-                    extract_lemma=self.extract_lemma_box.isChecked(),
-                    show_ipa=self.show_pronunciation_box.isChecked(),
+                    extract_lemma=extract_lemma,
+                    show_reading=False,
+                    show_ipa=False,
                     dictionary_ids=ordered_ids,
                 )
             config.tokenizers[language] = tokenizer
