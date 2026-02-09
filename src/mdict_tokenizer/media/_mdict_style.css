@@ -234,10 +234,9 @@
    -------------------------------------------------------------------------- */
 .md-settings-section,
 .md-config-section {
-  border-top: 1px solid var(--md-divider);
-  padding-top: 12px;
-  margin-top: 8px;
-  margin-bottom: 0;
+  border-bottom: 1px solid var(--md-divider);
+  padding-bottom: 6px;
+  margin-bottom: 12px;
 }
 
 .md-config-subtitle {
@@ -264,6 +263,7 @@
    -------------------------------------------------------------------------- */
 .md-config-toggle {
   padding: 4px 12px;
+  margin: 0;
   border-radius: 12px;
   border: 1px solid var(--md-divider);
   background: var(--md-button-bg);
@@ -282,6 +282,7 @@
   background: var(--md-accent);
   color: #fff;
   border-color: var(--md-accent);
+  margin: 0;
 }
 
 /* --------------------------------------------------------------------------
@@ -322,34 +323,86 @@
 }
 
 /* --------------------------------------------------------------------------
-   设置面板内 Select — 对齐 ListenSpeak ls-migrate-select
+   设置面板内 Select — 对齐 ListenSpeak 自定义下拉菜单
    -------------------------------------------------------------------------- */
-.md-settings-body select {
-  padding: 8px;
+.md-select-wrapper {
+  position: relative;
+}
+
+.md-select-btn {
+  padding: 6px 12px;
   border-radius: 6px;
   border: 1px solid var(--md-divider);
   background: var(--md-button-bg);
   color: var(--md-text-primary);
   font-size: 14px;
-  outline: none;
   cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  background-size: 1em;
-  padding-right: 28px;
+  outline: none;
+  min-width: 100px;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
 }
 
-.md-settings-body select:focus {
+.md-select-btn:hover {
+  background: var(--md-button-bg-hover);
+}
+
+.md-select-btn:focus {
   border-color: var(--md-accent);
 }
 
-.md-settings-body select option {
-  background: var(--md-card-bg);
+.md-select-btn::after {
+  content: '▼';
+  font-size: 10px;
+  color: var(--md-text-secondary);
+}
+
+.md-select-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background-color: var(--md-card-bg);
+  border: 1px solid var(--md-divider);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px var(--md-card-shadow);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 100;
+  max-height: 200px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.md-select-menu button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
   color: var(--md-text-primary);
-  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 14px;
+  white-space: nowrap;
+  outline: none;
+  text-align: center;
+  margin: 0;
+}
+
+.md-select-menu button:hover {
+  background-color: var(--md-button-bg-hover);
+}
+
+.md-select-menu button.active {
+  background-color: var(--md-accent);
+  color: #fff;
+  margin: 0;
 }
 
 /* --------------------------------------------------------------------------
@@ -985,6 +1038,8 @@
   align-items: center;
   justify-content: center;
   outline: none;
+  box-sizing: revert-layer;
+  margin: 0;
 }
 .md-settings-close:hover { background: var(--md-button-bg-hover); }
 

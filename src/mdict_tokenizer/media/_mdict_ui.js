@@ -1266,16 +1266,62 @@
     }
   }
 
-  function createSelect(options, value) {
-    var select = document.createElement("select");
-    options.forEach(function (option) {
-      var item = document.createElement("option");
-      item.value = option.value;
-      item.textContent = option.label;
-      select.appendChild(item);
+  function createSelect(options, value, onChange) {
+    var wrapper = document.createElement("div");
+    wrapper.className = "md-select-wrapper";
+    
+    var btn = document.createElement("button");
+    btn.className = "md-select-btn";
+    var currentLabel = "";
+    options.forEach(function(opt) {
+      if (opt.value === value) {
+        currentLabel = opt.label;
+      }
     });
-    select.value = value;
-    return select;
+    btn.textContent = currentLabel || options[0].label;
+    
+    var menu = document.createElement("div");
+    menu.className = "md-select-menu md-hidden";
+    menu.addEventListener("wheel", function(e) {
+      e.stopPropagation();
+    }, { passive: true });
+    menu.addEventListener("touchmove", function(e) {
+      e.stopPropagation();
+    }, { passive: true });
+    
+    options.forEach(function(opt) {
+      var optBtn = document.createElement("button");
+      optBtn.textContent = opt.label;
+      if (opt.value === value) {
+        optBtn.classList.add("active");
+      }
+      optBtn.addEventListener("click", function(e) {
+        e.stopPropagation();
+        btn.textContent = opt.label;
+        menu.querySelectorAll("button").forEach(function(b) {
+          b.classList.remove("active");
+        });
+        optBtn.classList.add("active");
+        menu.classList.add("md-hidden");
+        if (onChange) {
+          onChange(opt.value);
+        }
+      });
+      menu.appendChild(optBtn);
+    });
+    
+    btn.addEventListener("click", function(e) {
+      e.stopPropagation();
+      document.querySelectorAll(".md-select-menu").forEach(function(m) {
+        if (m !== menu) m.classList.add("md-hidden");
+      });
+      menu.classList.toggle("md-hidden");
+    });
+    
+    wrapper.appendChild(btn);
+    wrapper.appendChild(menu);
+    
+    return wrapper;
   }
 
   function createRow(labelText, control) {
@@ -1363,20 +1409,6 @@
 
     body.appendChild(buildDictionarySection(config));
 
-    var readingSelect = createSelect(
-      [
-        { value: "none", label: "不显示" },
-        { value: "lookup", label: "仅查词后" },
-        { value: "all", label: "显示全部" },
-      ],
-      config.readingMode
-    );
-    readingSelect.addEventListener("change", function () {
-      window.MD.Config.set("readingMode", readingSelect.value);
-      applyConfig(window.MD.Config.getAll());
-    });
-    body.appendChild(createRow("注音/音标显示", readingSelect));
-
     var lemmaToggle = document.createElement("button");
     lemmaToggle.className = "md-config-toggle" + (config.extractLemma ? " active" : "");
     lemmaToggle.textContent = config.extractLemma ? "开启" : "关闭";
@@ -1400,17 +1432,19 @@
     });
     body.appendChild(createRow("字体大小", fontSizeInput));
 
-    var clickSelect = createSelect(
+    var readingSelect = createSelect(
       [
-        { value: "click", label: "单击查词" },
-        { value: "longpress", label: "长按查词" },
+        { value: "none", label: "不显示" },
+        { value: "lookup", label: "仅查词后" },
+        { value: "all", label: "显示全部" },
       ],
-      config.clickBehavior
+      config.readingMode,
+      function(value) {
+        window.MD.Config.set("readingMode", value);
+        applyConfig(window.MD.Config.getAll());
+      }
     );
-    clickSelect.addEventListener("change", function () {
-      window.MD.Config.set("clickBehavior", clickSelect.value);
-    });
-    body.appendChild(createRow("分词点击", clickSelect));
+    body.appendChild(createRow("注音/音标显示", readingSelect));
 
     var historySelect = createSelect(
       [
@@ -1418,12 +1452,24 @@
         { value: "50", label: "50 条" },
         { value: "100", label: "100 条" },
       ],
-      String(config.historyLimit)
+      String(config.historyLimit),
+      function(value) {
+        window.MD.Config.set("historyLimit", parseInt(value, 10) || 50);
+      }
     );
-    historySelect.addEventListener("change", function () {
-      window.MD.Config.set("historyLimit", parseInt(historySelect.value, 10) || 50);
-    });
     body.appendChild(createRow("历史记录数量", historySelect));
+
+    var clickSelect = createSelect(
+      [
+        { value: "click", label: "单击查词" },
+        { value: "longpress", label: "长按查词" },
+      ],
+      config.clickBehavior,
+      function(value) {
+        window.MD.Config.set("clickBehavior", value);
+      }
+    );
+    body.appendChild(createRow("分词点击", clickSelect));
 
     var heightSelect = createSelect(
       [
@@ -1432,11 +1478,11 @@
         { value: "large", label: "大" },
         { value: "full", label: "全屏" },
       ],
-      config.popupHeight
+      config.popupHeight,
+      function(value) {
+        window.MD.Config.set("popupHeight", value);
+      }
     );
-    heightSelect.addEventListener("change", function () {
-      window.MD.Config.set("popupHeight", heightSelect.value);
-    });
     body.appendChild(createRow("弹窗高度", heightSelect));
 
     var styleSelect = createSelect(
@@ -1445,12 +1491,12 @@
         { value: "background", label: "背景色" },
         { value: "none", label: "无" },
       ],
-      config.tokenStyle
+      config.tokenStyle,
+      function(value) {
+        window.MD.Config.set("tokenStyle", value);
+        applyConfig(window.MD.Config.getAll());
+      }
     );
-    styleSelect.addEventListener("change", function () {
-      window.MD.Config.set("tokenStyle", styleSelect.value);
-      applyConfig(window.MD.Config.getAll());
-    });
     body.appendChild(createRow("分词样式", styleSelect));
 
     applyConfig(config);
@@ -1469,6 +1515,12 @@
     closeBtn.addEventListener("click", closeSettings);
     settingsPanel.addEventListener("keydown", function(e) {
       if (e.key === "Escape") closeSettings();
+    });
+
+    document.addEventListener("click", function() {
+      document.querySelectorAll(".md-select-menu").forEach(function(m) {
+        m.classList.add("md-hidden");
+      });
     });
 
     document.body.appendChild(settingsPanel);
