@@ -75,6 +75,12 @@
     var features = window.MD.Config.get("enabledFeatures") || { search: true, dictSelect: true, dictStatus: true };
 
     // 条件创建搜索框
+    var historyBtn = document.createElement('button');
+    historyBtn.type = 'button';
+    historyBtn.className = 'md-panel-history-btn';
+    historyBtn.textContent = '历史';
+    header.appendChild(historyBtn);
+
     var searchInput = null;
     if (features.search) {
       searchInput = document.createElement('input');
@@ -83,13 +89,6 @@
       searchInput.placeholder = '搜索词条...';
       header.appendChild(searchInput);
     }
-
-    // 创建历史按钮
-    var historyBtn = document.createElement('button');
-    historyBtn.type = 'button';
-    historyBtn.className = 'md-panel-history-btn';
-    historyBtn.textContent = '历史';
-    header.appendChild(historyBtn);
 
     var controls = document.createElement('div');
     controls.className = 'md-panel-controls';
@@ -1448,6 +1447,7 @@
     wrapper.appendChild(title);
 
     var features = [
+      { id: "history", label: "历史查询" },
       { id: "search", label: "搜索框" },
       { id: "dictSelect", label: "辞典选择" },
       { id: "dictStatus", label: "辞典状态" }
@@ -1460,22 +1460,38 @@
        item.className = "md-config-dict-item";
        var checkbox = document.createElement("input");
        checkbox.type = "checkbox";
-       checkbox.checked = enabled[feature.id];
-       checkbox.addEventListener("change", function () {
-         var newConfig = {};
-         features.forEach(function (f, index) {
-           var box = wrapper.querySelectorAll("input[type=checkbox]")[index];
-           newConfig[f.id] = box.checked;
+       if (feature.id === "history") {
+         checkbox.checked = config.enableHistory !== false;
+         checkbox.addEventListener("change", function () {
+           var newVal = checkbox.checked;
+           window.MD.Config.set("enableHistory", newVal);
+           var els = window.MD.UI.elements;
+           if (!newVal) {
+             window.MD.History.clear();
+             if (els && els.historyBtn) { els.historyBtn.style.display = "none"; }
+           } else {
+             if (els && els.historyBtn) { els.historyBtn.style.display = ""; }
+           }
          });
-         window.MD.Config.set("enabledFeatures", newConfig);
-         
-         // 立即生效：重建面板
-         var panel = document.querySelector(".md-panel");
-         if (panel) {
-           panel.remove();
-         }
-         window.MD.UI.ensurePanel();
-       });
+       } else {
+         checkbox.checked = enabled[feature.id];
+         checkbox.addEventListener("change", function () {
+           var newConfig = {};
+           features.forEach(function (f) {
+             if (f.id === "history") return;
+             var box = wrapper.querySelector("input[data-feature='" + f.id + "']");
+             if (box) newConfig[f.id] = box.checked;
+           });
+           window.MD.Config.set("enabledFeatures", newConfig);
+           
+           var panel = document.querySelector(".md-panel");
+           if (panel) {
+             panel.remove();
+           }
+           window.MD.UI.ensurePanel();
+         });
+       }
+       checkbox.setAttribute("data-feature", feature.id);
        var label = document.createElement("span");
        label.textContent = feature.label;
        item.appendChild(checkbox);
@@ -1520,28 +1536,6 @@
 
     body.appendChild(buildDictionarySection(config));
     body.appendChild(buildFeatureSection(config));
-
-    var historyToggle = document.createElement("button");
-    historyToggle.className = "md-config-toggle" + (config.enableHistory ? " active" : "");
-    historyToggle.textContent = config.enableHistory ? "开启" : "关闭";
-    historyToggle.addEventListener("click", function () {
-      var newVal = !window.MD.Config.get("enableHistory");
-      window.MD.Config.set("enableHistory", newVal);
-      historyToggle.classList.toggle("active", newVal);
-      historyToggle.textContent = newVal ? "开启" : "关闭";
-      var els = window.MD.UI.elements;
-      if (!newVal) {
-        window.MD.History.clear();
-        if (els && els.historyBtn) {
-          els.historyBtn.style.display = "none";
-        }
-      } else {
-        if (els && els.historyBtn) {
-          els.historyBtn.style.display = "";
-        }
-      }
-    });
-    body.appendChild(createRow("历史查询", historyToggle));
 
     var lemmaToggle = document.createElement("button");
     lemmaToggle.className = "md-config-toggle" + (config.extractLemma ? " active" : "");

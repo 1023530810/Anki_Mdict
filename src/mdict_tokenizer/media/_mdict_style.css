@@ -1015,7 +1015,8 @@
 
 /* ===== Settings Overlay ===== */
 
-.md-panel-settings-btn {
+.md-panel-settings-btn,
+.md-panel-history-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1034,8 +1035,10 @@
   transition: border-color 0.2s;
   white-space: nowrap;
 }
-.md-panel-settings-btn:focus { outline: none; border-color: var(--md-accent); }
-.md-panel-settings-btn:hover { background: var(--md-button-bg-hover); }
+.md-panel-settings-btn:focus,
+.md-panel-history-btn:focus { outline: none; border-color: var(--md-accent); }
+.md-panel-settings-btn:hover,
+.md-panel-history-btn:hover { background: var(--md-button-bg-hover); }
 
 .md-settings-panel {
   position: fixed;
