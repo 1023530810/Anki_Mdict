@@ -41,6 +41,11 @@
     window.MD._persistent.uiState.currentSelectedToken = null;
   }
 
+  // Feature 5: 有效字典过滤（用于下拉列表只显示有结果的字典）
+  if (!window.MD._persistent.uiState.currentEffectiveIds) {
+    window.MD._persistent.uiState.currentEffectiveIds = null;
+  }
+
   // Feature 6: CSS 自动加载（用于追踪已加载的字典样式）
   if (!window.MD._persistent.uiState.cssLoaded) {
     window.MD._persistent.uiState.cssLoaded = {};
@@ -337,8 +342,9 @@
   }
 
   function updateDropdownOptions(dropdownEl) {
+    var allDicts;
     var dicts;
-    var allOption;
+    var effectiveIds;
     var i;
     var dict;
     var option;
@@ -348,9 +354,18 @@
     }
     dropdownEl.innerHTML = '';
 
-    dicts = [];
+    allDicts = [];
     if (window.MD && window.MD.Dictionary && window.MD.Dictionary.getDictionaries) {
-      dicts = window.MD.Dictionary.getDictionaries();
+      allDicts = window.MD.Dictionary.getDictionaries();
+    }
+
+    effectiveIds = window.MD._persistent.uiState.currentEffectiveIds || null;
+    if (effectiveIds && effectiveIds.length > 0) {
+      dicts = allDicts.filter(function(d) {
+        return effectiveIds.indexOf(d.id) !== -1;
+      });
+    } else {
+      dicts = allDicts;
     }
 
     for (i = 0; i < dicts.length; i++) {
@@ -422,6 +437,9 @@
       dictId = optionBtn.getAttribute('data-dict-id') || '';
       dictName = optionBtn.textContent || '';
       selectDictionary(dictId, dictName);
+      window.MD.UI.currentDictId = dictId;
+      window.MD._persistent.uiState.currentDictId = dictId;
+      refreshLookup();
     });
 
     document.addEventListener('click', function(e) {
@@ -601,10 +619,15 @@
     * @param {number} requestId - 请求 ID，用于防止竞态
     */
    function refreshCounterForWord(word, requestId) {
-     var language, candidateDicts, container, displayId;
+     var language, candidateDicts, container, displayId, elements;
 
      if (!word) {
+       window.MD._persistent.uiState.currentEffectiveIds = null;
        updateCounter([], null);
+       elements = window.MD.UI.elements;
+       if (elements && elements.dictDropdown) {
+         updateDropdownOptions(elements.dictDropdown);
+       }
        return;
      }
 
@@ -612,6 +635,7 @@
      candidateDicts = getDictionaries();
 
      if (!candidateDicts.length) {
+       window.MD._persistent.uiState.currentEffectiveIds = null;
        updateCounter([], null);
        return;
      }
@@ -619,9 +643,16 @@
      probeEffectiveDictionaryIds(word, candidateDicts, requestId, language).then(function(effectiveIds) {
        if (window.MD._persistent.uiState.counterRequestId !== requestId) return;
 
+       window.MD._persistent.uiState.currentEffectiveIds = effectiveIds;
+
        container = document.querySelector('.md-panel-dict-select-wrapper');
        displayId = container ? container.dataset.selectedId : null;
        updateCounter(effectiveIds, displayId);
+
+       elements = window.MD.UI.elements;
+       if (elements && elements.dictDropdown) {
+         updateDropdownOptions(elements.dictDropdown);
+       }
      });
    }
 
@@ -772,21 +803,34 @@
     hotzoneLeft = elements.hotzoneLeft;
     hotzoneRight = elements.hotzoneRight;
 
-    if (hotzoneLeft) {
-      hotzoneLeft.addEventListener('click', function(e) {
+    function bindHotzone(el, handler) {
+      if (!el) return;
+      var touchMoved = false;
+
+      el.addEventListener('touchstart', function() {
+        touchMoved = false;
+      }, { passive: true });
+
+      el.addEventListener('touchmove', function() {
+        touchMoved = true;
+      }, { passive: true });
+
+      el.addEventListener('touchend', function(e) {
+        if (touchMoved) return;
         e.preventDefault();
         e.stopPropagation();
-        switchToPrevDictionary();
+        handler();
+      });
+
+      el.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        handler();
       });
     }
 
-    if (hotzoneRight) {
-      hotzoneRight.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        switchToNextDictionary();
-      });
-    }
+    bindHotzone(hotzoneLeft, switchToPrevDictionary);
+    bindHotzone(hotzoneRight, switchToNextDictionary);
   }
 
   function bindCloseEvents(elements) {
