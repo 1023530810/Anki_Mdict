@@ -1552,10 +1552,11 @@
    * - 'modal': 弹窗模式，创建居中浮层（默认回退）
    * 
    * 容器检测逻辑：
-   * 1. 初始化时自动检测 #mdict-panel
-   * 2. 支持延迟设置容器（setContainer）
-   */
-  window.MD.UI = {
+    * 1. 初始化时自动检测 #mdict-panel
+    * 2. 支持延迟设置容器（setContainer）
+    */
+   window.applyConfig = applyConfig;
+   window.MD.UI = {
     // 显示模式: 'embedded' | 'modal' | null
     mode: null,
     
