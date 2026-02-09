@@ -71,42 +71,69 @@
     var header = document.createElement('div');
     header.className = 'md-panel-header';
 
-    var searchInput = document.createElement('input');
-    searchInput.type = 'text';
-    searchInput.className = 'md-panel-search';
-    searchInput.placeholder = '搜索词条...';
+    // 读取配置
+    var features = window.MD.Config.get("enabledFeatures") || { search: true, dictSelect: true, dictStatus: true };
+
+    // 条件创建搜索框
+    var searchInput = null;
+    if (features.search) {
+      searchInput = document.createElement('input');
+      searchInput.type = 'text';
+      searchInput.className = 'md-panel-search';
+      searchInput.placeholder = '搜索词条...';
+      header.appendChild(searchInput);
+    }
 
     var controls = document.createElement('div');
     controls.className = 'md-panel-controls';
 
-    var dictSelectWrapper = document.createElement('div');
-    dictSelectWrapper.className = 'md-panel-dict-select-wrapper';
+    // 条件创建辞典选择器
+    var dictSelectWrapper = null;
+    var dictSelect = null;
+    var dictSelectText = null;
+    var dictDropdown = null;
+    if (features.dictSelect) {
+      dictSelectWrapper = document.createElement('div');
+      dictSelectWrapper.className = 'md-panel-dict-select-wrapper';
 
-    var dictSelect = document.createElement('button');
-    dictSelect.type = 'button';
-    dictSelect.className = 'md-panel-dict-select';
-    dictSelect.setAttribute('aria-haspopup', 'listbox');
-    dictSelect.setAttribute('aria-expanded', 'false');
-    dictSelect.setAttribute('aria-controls', 'md-dict-dropdown');
-    dictSelect.setAttribute('tabindex', '0');
+      dictSelect = document.createElement('button');
+      dictSelect.type = 'button';
+      dictSelect.className = 'md-panel-dict-select';
+      dictSelect.setAttribute('aria-haspopup', 'listbox');
+      dictSelect.setAttribute('aria-expanded', 'false');
+      dictSelect.setAttribute('aria-controls', 'md-dict-dropdown');
+      dictSelect.setAttribute('tabindex', '0');
 
-    var dictSelectText = document.createElement('span');
-    dictSelectText.className = 'md-panel-dict-select-text';
-    dictSelectText.textContent = '';
+      dictSelectText = document.createElement('span');
+      dictSelectText.className = 'md-panel-dict-select-text';
+      dictSelectText.textContent = '';
 
-    dictSelect.appendChild(dictSelectText);
+      dictSelect.appendChild(dictSelectText);
 
-    var dictDropdown = document.createElement('div');
-    dictDropdown.className = 'md-dropdown md-dropdown-hidden';
-    dictDropdown.setAttribute('role', 'listbox');
-    dictDropdown.id = 'md-dict-dropdown';
+      dictDropdown = document.createElement('div');
+      dictDropdown.className = 'md-dropdown md-dropdown-hidden';
+      dictDropdown.setAttribute('role', 'listbox');
+      dictDropdown.id = 'md-dict-dropdown';
 
-    var scopeIndicator = document.createElement('span');
-    scopeIndicator.className = 'md-dict-scope';
-    scopeIndicator.textContent = '全局';
+      dictSelectWrapper.appendChild(dictSelect);
+      dictSelectWrapper.appendChild(dictDropdown);
+      controls.appendChild(dictSelectWrapper);
+    }
 
-    var counter = document.createElement('span');
-    counter.className = 'md-panel-counter md-hidden';
+    // 条件创建辞典状态
+    var scopeIndicator = null;
+    var counter = null;
+    if (features.dictStatus) {
+      scopeIndicator = document.createElement('span');
+      scopeIndicator.className = 'md-dict-scope';
+      scopeIndicator.textContent = '全局';
+
+      counter = document.createElement('span');
+      counter.className = 'md-panel-counter md-hidden';
+
+      controls.appendChild(scopeIndicator);
+      controls.appendChild(counter);
+    }
 
     var closeBtn = document.createElement('button');
     closeBtn.type = 'button';
@@ -118,12 +145,6 @@
     settingsBtn.className = 'md-panel-settings-btn';
     settingsBtn.textContent = '设置';
 
-    header.appendChild(searchInput);
-    dictSelectWrapper.appendChild(dictSelect);
-    dictSelectWrapper.appendChild(dictDropdown);
-    controls.appendChild(dictSelectWrapper);
-    controls.appendChild(scopeIndicator);
-    controls.appendChild(counter);
     controls.appendChild(settingsBtn);
     controls.appendChild(closeBtn);
     header.appendChild(controls);
@@ -1397,6 +1418,52 @@
     return wrapper;
   }
 
+  function buildFeatureSection(config) {
+    var wrapper = document.createElement("div");
+    wrapper.className = "md-settings-section";
+    var title = document.createElement("div");
+    title.className = "md-config-subtitle";
+    title.textContent = "启用功能";
+    wrapper.appendChild(title);
+
+    var features = [
+      { id: "search", label: "搜索框" },
+      { id: "dictSelect", label: "辞典选择" },
+      { id: "dictStatus", label: "辞典状态" }
+    ];
+
+    var enabled = config.enabledFeatures || { search: true, dictSelect: true, dictStatus: true };
+
+     features.forEach(function (feature) {
+       var item = document.createElement("label");
+       item.className = "md-config-dict-item";
+       var checkbox = document.createElement("input");
+       checkbox.type = "checkbox";
+       checkbox.checked = enabled[feature.id];
+       checkbox.addEventListener("change", function () {
+         var newConfig = {};
+         features.forEach(function (f, index) {
+           var box = wrapper.querySelectorAll("input[type=checkbox]")[index];
+           newConfig[f.id] = box.checked;
+         });
+         window.MD.Config.set("enabledFeatures", newConfig);
+         
+         // 立即生效：重建面板
+         var panel = document.querySelector(".md-panel");
+         if (panel) {
+           panel.remove();
+         }
+         window.MD.UI.ensurePanel();
+       });
+       var label = document.createElement("span");
+       label.textContent = feature.label;
+       item.appendChild(checkbox);
+       item.appendChild(label);
+       wrapper.appendChild(item);
+     });
+     return wrapper;
+  }
+
   function showConfig() {
     var existing = document.querySelector(".md-settings-panel");
     if (existing) { existing.remove(); return; }
@@ -1431,6 +1498,7 @@
     var heightSelect;
 
     body.appendChild(buildDictionarySection(config));
+    body.appendChild(buildFeatureSection(config));
 
     var lemmaToggle = document.createElement("button");
     lemmaToggle.className = "md-config-toggle" + (config.extractLemma ? " active" : "");
