@@ -1115,6 +1115,10 @@
   function lookupAndRender(word, dictionaryId, prefixHtml, options) {
     var panel = ensurePanel();
     var elements = window.MD.UI.elements;
+
+    var historyOverlay = elements && elements.content && elements.content.querySelector('.md-history-overlay');
+    if (historyOverlay) { historyOverlay.remove(); }
+
     var requestId;
     var lookupRequestId;
     var lookupOptions;
