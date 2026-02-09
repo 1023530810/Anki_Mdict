@@ -1661,11 +1661,11 @@
 
   function showHistory() {
     var elements = window.MD.UI.elements;
-    if (!elements || !elements.panelContent) {
+    if (!elements || !elements.content) {
       return;
     }
 
-    var existing = elements.panelContent.querySelector(".md-history-overlay");
+    var existing = elements.content.querySelector(".md-history-overlay");
     if (existing) {
       existing.remove();
       return;
@@ -1729,7 +1729,7 @@
       overlay.remove();
     });
 
-    elements.panelContent.appendChild(overlay);
+    elements.content.appendChild(overlay);
   }
 
   function formatRelativeTime(timestamp) {
