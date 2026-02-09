@@ -214,6 +214,7 @@
     var container;
     var savedConfig;
     var heightClass;
+    var enableHistory;
 
     // Case 1: panelEl exists AND is still in the DOM → reuse
     if (panelEl && document.contains(panelEl)) {
@@ -306,6 +307,14 @@
      elements.settingsBtn.addEventListener('click', function() {
        showConfig();
      });
+
+     if (elements.historyBtn) {
+       enableHistory = window.MD.Config.get('enableHistory');
+       elements.historyBtn.style.display = enableHistory ? '' : 'none';
+       elements.historyBtn.addEventListener('click', function() {
+         showHistory();
+       });
+     }
 
      return panelEl;
   }
@@ -1629,24 +1638,90 @@
   }
 
   function showHistory() {
-    var history = getHistory();
-    var panel = document.querySelector(".md-history-panel");
-    if (!panel) {
-      panel = document.createElement("div");
-      panel.className = "md-history-panel";
-      document.body.appendChild(panel);
-    }
-    if (!history.length) {
-      panel.innerHTML = "<div class=\"md-empty\">暂无历史</div>";
+    var elements = window.MD.UI.elements;
+    if (!elements || !elements.panelContent) {
       return;
     }
-    var html = history
-      .slice(0, 100)
-      .map(function (entry) {
-        return "<div class=\"md-history-item\">" + entry.word + "</div>";
-      })
-      .join("");
-    panel.innerHTML = html;
+
+    var existing = elements.panelContent.querySelector(".md-history-overlay");
+    if (existing) {
+      existing.remove();
+      return;
+    }
+
+    var history = window.MD.History.getAll();
+    
+    var overlay = document.createElement("div");
+    overlay.className = "md-history-overlay";
+
+    var header = document.createElement("div");
+    header.className = "md-history-header";
+
+    var headerTitle = document.createElement("span");
+    headerTitle.textContent = "历史记录";
+
+    var closeBtn = document.createElement("button");
+    closeBtn.className = "md-history-close";
+    closeBtn.textContent = "×";
+
+    header.appendChild(headerTitle);
+    header.appendChild(closeBtn);
+
+    var listContainer = document.createElement("div");
+    listContainer.className = "md-history-list";
+
+    if (!history.length) {
+      listContainer.innerHTML = "<div class=\"md-empty\">暂无历史</div>";
+    } else {
+      history.slice(0, 100).forEach(function(entry) {
+        var item = document.createElement("div");
+        item.className = "md-history-item";
+        
+        var wordSpan = document.createElement("span");
+        wordSpan.className = "md-history-word";
+        wordSpan.textContent = entry.word;
+        
+        var metaSpan = document.createElement("span");
+        metaSpan.className = "md-history-meta";
+        
+        var timeStr = formatRelativeTime(entry.timestamp);
+        var sourceStr = entry.source === "manual" ? "手动查询" : "自动查询";
+        metaSpan.textContent = timeStr + " · " + sourceStr;
+        
+        item.appendChild(wordSpan);
+        item.appendChild(metaSpan);
+        
+        item.addEventListener("click", function() {
+          lookupAndRender(entry.word, null, '');
+          overlay.remove();
+        });
+        
+        listContainer.appendChild(item);
+      });
+    }
+
+    overlay.appendChild(header);
+    overlay.appendChild(listContainer);
+
+    closeBtn.addEventListener("click", function() {
+      overlay.remove();
+    });
+
+    elements.panelContent.appendChild(overlay);
+  }
+
+  function formatRelativeTime(timestamp) {
+    var now = Date.now();
+    var diff = now - timestamp;
+    var seconds = Math.floor(diff / 1000);
+    var minutes = Math.floor(seconds / 60);
+    var hours = Math.floor(minutes / 60);
+    var days = Math.floor(hours / 24);
+
+    if (days > 0) return days + "天前";
+    if (hours > 0) return hours + "小时前";
+    if (minutes > 0) return minutes + "分钟前";
+    return "刚刚";
   }
 
    function lookupFromToken(word, dictionaryId, prefixHtml, language, element) {
