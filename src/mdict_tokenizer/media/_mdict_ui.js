@@ -84,6 +84,13 @@
       header.appendChild(searchInput);
     }
 
+    // 创建历史按钮
+    var historyBtn = document.createElement('button');
+    historyBtn.type = 'button';
+    historyBtn.className = 'md-panel-history-btn';
+    historyBtn.textContent = '历史';
+    header.appendChild(historyBtn);
+
     var controls = document.createElement('div');
     controls.className = 'md-panel-controls';
 
@@ -184,6 +191,7 @@
       header: header,
       title: title,
       searchInput: searchInput,
+      historyBtn: historyBtn,
       searchBtn: searchBtn,
       controls: controls,
       dictSelect: dictSelect,
