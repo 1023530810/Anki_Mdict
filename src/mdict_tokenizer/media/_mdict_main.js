@@ -453,60 +453,65 @@
        window.MD.API = {};
      }
 
-     DEFAULT_CONFIG = {
-       readingMode: "lookup",
-       extractLemma: true,
-       fontSize: 16,
-       clickBehavior: "click",
-       historyLimit: 50,
-       popupHeight: "medium",
-       tokenStyle: "underline",
-       enabledDictionaries: [],
-     };
+      DEFAULT_CONFIG = {
+        readingMode: "lookup",
+        extractLemma: true,
+        fontSize: 16,
+        clickBehavior: "click",
+        enableHistory: true,
+        historyLimit: 50,
+        popupHeight: "medium",
+        tokenStyle: "underline",
+        enabledDictionaries: [],
+      };
 
-     CONFIG_SCHEMA = {
-       readingMode: {
-         type: "select",
-         options: ["none", "lookup", "all"],
-         default: "lookup",
-       },
-       extractLemma: {
-         type: "boolean",
-         default: true,
-       },
-       fontSize: {
-         type: "number",
-         min: 12,
-         max: 32,
-         step: 2,
-         default: 16,
-       },
-       clickBehavior: {
-         type: "select",
-         options: ["click", "longpress"],
-         default: "click",
-       },
-       historyLimit: {
-         type: "select",
-         options: [10, 50, 100],
-         default: 50,
-       },
-       popupHeight: {
-         type: "select",
-         options: ["small", "medium", "large", "full"],
-         default: "medium",
-       },
-       tokenStyle: {
-         type: "select",
-         options: ["underline", "background", "none"],
-         default: "underline",
-       },
-       enabledDictionaries: {
-         type: "array",
-         itemType: "string",
-         default: [],
-       },
-     };
+      CONFIG_SCHEMA = {
+        readingMode: {
+          type: "select",
+          options: ["none", "lookup", "all"],
+          default: "lookup",
+        },
+        extractLemma: {
+          type: "boolean",
+          default: true,
+        },
+        fontSize: {
+          type: "number",
+          min: 12,
+          max: 32,
+          step: 2,
+          default: 16,
+        },
+        clickBehavior: {
+          type: "select",
+          options: ["click", "longpress"],
+          default: "click",
+        },
+        enableHistory: {
+          type: "boolean",
+          default: true,
+        },
+        historyLimit: {
+          type: "select",
+          options: [10, 50, 100],
+          default: 50,
+        },
+        popupHeight: {
+          type: "select",
+          options: ["small", "medium", "large", "full"],
+          default: "medium",
+        },
+        tokenStyle: {
+          type: "select",
+          options: ["underline", "background", "none"],
+          default: "underline",
+        },
+        enabledDictionaries: {
+          type: "array",
+          itemType: "string",
+          default: [],
+        },
+      };
 
      configChangeCallbacks = [];
 
