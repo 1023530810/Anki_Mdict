@@ -1279,10 +1279,10 @@
   }
 
   function createRow(labelText, control) {
-    var row = document.createElement("label");
-    row.className = "md-config-row";
+    var row = document.createElement("div");
+    row.className = "md-settings-item";
     var title = document.createElement("span");
-    title.className = "md-config-label";
+    title.className = "md-settings-label";
     title.textContent = labelText;
     row.appendChild(title);
     row.appendChild(control);
@@ -1291,7 +1291,7 @@
 
   function buildDictionarySection(config) {
     var wrapper = document.createElement("div");
-    wrapper.className = "md-config-section";
+    wrapper.className = "md-settings-section";
     var title = document.createElement("div");
     title.className = "md-config-subtitle";
     title.textContent = "启用辞典";
@@ -1331,9 +1331,6 @@
   }
 
   function showConfig() {
-    var oldPanel = document.querySelector(".md-config-panel");
-    if (oldPanel) oldPanel.remove();
-
     var existing = document.querySelector(".md-settings-panel");
     if (existing) { existing.remove(); return; }
 
@@ -1362,16 +1359,9 @@
     var body = document.createElement("div");
     body.className = "md-settings-body";
 
-    var panel = document.createElement("div");
-    panel.className = "md-config-panel";
     var config = window.MD.Config.getAll();
 
-    var title = document.createElement("div");
-    title.className = "md-config-title";
-    title.textContent = "卡片配置";
-    panel.appendChild(title);
-
-    panel.appendChild(buildDictionarySection(config));
+    body.appendChild(buildDictionarySection(config));
 
     var readingSelect = createSelect(
       [
@@ -1385,15 +1375,18 @@
       window.MD.Config.set("readingMode", readingSelect.value);
       applyConfig(window.MD.Config.getAll());
     });
-    panel.appendChild(createRow("注音/音标显示", readingSelect));
+    body.appendChild(createRow("注音/音标显示", readingSelect));
 
-    var lemmaToggle = document.createElement("input");
-    lemmaToggle.type = "checkbox";
-    lemmaToggle.checked = !!config.extractLemma;
-    lemmaToggle.addEventListener("change", function () {
-      window.MD.Config.set("extractLemma", lemmaToggle.checked);
+    var lemmaToggle = document.createElement("button");
+    lemmaToggle.className = "md-config-toggle" + (config.extractLemma ? " active" : "");
+    lemmaToggle.textContent = config.extractLemma ? "开启" : "关闭";
+    lemmaToggle.addEventListener("click", function () {
+      var newVal = !window.MD.Config.get("extractLemma");
+      window.MD.Config.set("extractLemma", newVal);
+      lemmaToggle.classList.toggle("active", newVal);
+      lemmaToggle.textContent = newVal ? "开启" : "关闭";
     });
-    panel.appendChild(createRow("提取原型", lemmaToggle));
+    body.appendChild(createRow("提取原型", lemmaToggle));
 
     var fontSizeInput = document.createElement("input");
     fontSizeInput.type = "number";
@@ -1405,7 +1398,7 @@
       window.MD.Config.set("fontSize", parseInt(fontSizeInput.value, 10) || 16);
       applyConfig(window.MD.Config.getAll());
     });
-    panel.appendChild(createRow("字体大小", fontSizeInput));
+    body.appendChild(createRow("字体大小", fontSizeInput));
 
     var clickSelect = createSelect(
       [
@@ -1417,7 +1410,7 @@
     clickSelect.addEventListener("change", function () {
       window.MD.Config.set("clickBehavior", clickSelect.value);
     });
-    panel.appendChild(createRow("分词点击", clickSelect));
+    body.appendChild(createRow("分词点击", clickSelect));
 
     var historySelect = createSelect(
       [
@@ -1430,7 +1423,7 @@
     historySelect.addEventListener("change", function () {
       window.MD.Config.set("historyLimit", parseInt(historySelect.value, 10) || 50);
     });
-    panel.appendChild(createRow("历史记录数量", historySelect));
+    body.appendChild(createRow("历史记录数量", historySelect));
 
     var heightSelect = createSelect(
       [
@@ -1444,7 +1437,7 @@
     heightSelect.addEventListener("change", function () {
       window.MD.Config.set("popupHeight", heightSelect.value);
     });
-    panel.appendChild(createRow("弹窗高度", heightSelect));
+    body.appendChild(createRow("弹窗高度", heightSelect));
 
     var styleSelect = createSelect(
       [
@@ -1458,10 +1451,9 @@
       window.MD.Config.set("tokenStyle", styleSelect.value);
       applyConfig(window.MD.Config.getAll());
     });
-    panel.appendChild(createRow("分词样式", styleSelect));
+    body.appendChild(createRow("分词样式", styleSelect));
 
     applyConfig(config);
-    body.appendChild(panel);
 
     content.appendChild(header);
     content.appendChild(body);
