@@ -14,6 +14,7 @@
     popupHeight: "medium",
     tokenStyle: "underline",
     enabledDictionaries: [],
+    enabledFeatures: { search: true, dictSelect: true, dictStatus: true },
   };
 
   var STORAGE_KEY = "mdict_config";
