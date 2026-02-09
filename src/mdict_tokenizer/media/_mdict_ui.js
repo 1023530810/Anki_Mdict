@@ -1525,14 +1525,15 @@
       window.MD.Config.set("enableHistory", newVal);
       historyToggle.classList.toggle("active", newVal);
       historyToggle.textContent = newVal ? "开启" : "关闭";
+      var els = window.MD.UI.elements;
       if (!newVal) {
         window.MD.History.clear();
-        if (elements.historyBtn) {
-          elements.historyBtn.style.display = "none";
+        if (els && els.historyBtn) {
+          els.historyBtn.style.display = "none";
         }
       } else {
-        if (elements.historyBtn) {
-          elements.historyBtn.style.display = "";
+        if (els && els.historyBtn) {
+          els.historyBtn.style.display = "";
         }
       }
     });
