@@ -1406,6 +1406,8 @@
     body.className = "md-settings-body";
 
     var config = window.MD.Config.getAll();
+    var currentMode = window.MD.UI.getMode();
+    var heightSelect;
 
     body.appendChild(buildDictionarySection(config));
 
@@ -1471,19 +1473,21 @@
     );
     body.appendChild(createRow("分词点击", clickSelect));
 
-    var heightSelect = createSelect(
-      [
-        { value: "small", label: "小" },
-        { value: "medium", label: "中" },
-        { value: "large", label: "大" },
-        { value: "full", label: "全屏" },
-      ],
-      config.popupHeight,
-      function(value) {
-        window.MD.Config.set("popupHeight", value);
-      }
-    );
-    body.appendChild(createRow("弹窗高度", heightSelect));
+    if (currentMode === 'modal') {
+      heightSelect = createSelect(
+        [
+          { value: "small", label: "小" },
+          { value: "medium", label: "中" },
+          { value: "large", label: "大" },
+          { value: "full", label: "全屏" },
+        ],
+        config.popupHeight,
+        function(value) {
+          window.MD.Config.set("popupHeight", value);
+        }
+      );
+      body.appendChild(createRow("弹窗高度", heightSelect));
+    }
 
     var styleSelect = createSelect(
       [
