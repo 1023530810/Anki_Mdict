@@ -1680,19 +1680,6 @@
     var overlay = document.createElement("div");
     overlay.className = "md-history-overlay";
 
-    var header = document.createElement("div");
-    header.className = "md-history-header";
-
-    var headerTitle = document.createElement("span");
-    headerTitle.textContent = "历史记录";
-
-    var closeBtn = document.createElement("button");
-    closeBtn.className = "md-history-close";
-    closeBtn.textContent = "×";
-
-    header.appendChild(headerTitle);
-    header.appendChild(closeBtn);
-
     var listContainer = document.createElement("div");
     listContainer.className = "md-history-list";
 
@@ -1726,12 +1713,7 @@
       });
     }
 
-    overlay.appendChild(header);
     overlay.appendChild(listContainer);
-
-    closeBtn.addEventListener("click", function() {
-      overlay.remove();
-    });
 
     elements.content.appendChild(overlay);
   }

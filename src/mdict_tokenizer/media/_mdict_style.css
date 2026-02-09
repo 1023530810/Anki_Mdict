@@ -757,24 +757,6 @@
   overflow: hidden;
 }
 
-.md-history-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 15px;
-  border-bottom: 1px solid var(--md-divider);
-  flex-shrink: 0;
-}
-
-.md-history-close {
-  background: none;
-  border: none;
-  font-size: 18px;
-  cursor: pointer;
-  color: var(--md-text-secondary);
-  padding: 0 4px;
-}
-
 .md-history-list {
   flex: 1;
   overflow-y: auto;
