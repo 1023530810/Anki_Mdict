@@ -346,6 +346,12 @@
   border-color: var(--md-accent);
 }
 
+.md-settings-body select option {
+  background: var(--md-card-bg);
+  color: var(--md-text-primary);
+  padding: 6px 8px;
+}
+
 /* --------------------------------------------------------------------------
    设置面板内 Input — 对齐 ListenSpeak 风格
    -------------------------------------------------------------------------- */
