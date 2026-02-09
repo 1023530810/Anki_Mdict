@@ -113,12 +113,18 @@
     closeBtn.className = 'md-panel-close';
     closeBtn.textContent = '×';
 
+    var settingsBtn = document.createElement('button');
+    settingsBtn.type = 'button';
+    settingsBtn.className = 'md-panel-settings-btn';
+    settingsBtn.textContent = '设置';
+
     header.appendChild(searchInput);
     dictSelectWrapper.appendChild(dictSelect);
     dictSelectWrapper.appendChild(dictDropdown);
     controls.appendChild(dictSelectWrapper);
     controls.appendChild(scopeIndicator);
     controls.appendChild(counter);
+    controls.appendChild(settingsBtn);
     controls.appendChild(closeBtn);
     header.appendChild(controls);
 
@@ -164,6 +170,7 @@
       dictDropdown: dictDropdown,
       scopeIndicator: scopeIndicator,
       counter: counter,
+      settingsBtn: settingsBtn,
       closeBtn: closeBtn,
       content: content,
       contentBody: contentBody,
@@ -257,6 +264,10 @@
      if (window.MD._persistent.uiState.currentWord && elements.searchInput) {
        elements.searchInput.value = window.MD._persistent.uiState.currentWord;
      }
+
+     elements.settingsBtn.addEventListener('click', function() {
+       showConfig();
+     });
 
      return panelEl;
   }
@@ -1320,12 +1331,38 @@
   }
 
   function showConfig() {
-    var panel = document.querySelector(".md-config-panel");
-    if (panel) {
-      panel.classList.toggle("md-panel-hidden");
-      return;
-    }
-    panel = document.createElement("div");
+    var oldPanel = document.querySelector(".md-config-panel");
+    if (oldPanel) oldPanel.remove();
+
+    var existing = document.querySelector(".md-settings-panel");
+    if (existing) { existing.remove(); return; }
+
+    var settingsPanel = document.createElement("div");
+    settingsPanel.className = "md-settings-panel";
+
+    var overlay = document.createElement("div");
+    overlay.className = "md-settings-overlay";
+
+    var content = document.createElement("div");
+    content.className = "md-settings-content";
+
+    var header = document.createElement("div");
+    header.className = "md-settings-header";
+
+    var headerTitle = document.createElement("span");
+    headerTitle.textContent = "设置";
+
+    var closeBtn = document.createElement("button");
+    closeBtn.className = "md-settings-close";
+    closeBtn.textContent = "✕";
+
+    header.appendChild(headerTitle);
+    header.appendChild(closeBtn);
+
+    var body = document.createElement("div");
+    body.className = "md-settings-body";
+
+    var panel = document.createElement("div");
     panel.className = "md-config-panel";
     var config = window.MD.Config.getAll();
 
@@ -1424,7 +1461,25 @@
     panel.appendChild(createRow("分词样式", styleSelect));
 
     applyConfig(config);
-    document.body.appendChild(panel);
+    body.appendChild(panel);
+
+    content.appendChild(header);
+    content.appendChild(body);
+    settingsPanel.appendChild(overlay);
+    settingsPanel.appendChild(content);
+
+    function closeSettings() {
+      var el = document.querySelector(".md-settings-panel");
+      if (el) el.remove();
+    }
+
+    overlay.addEventListener("click", closeSettings);
+    closeBtn.addEventListener("click", closeSettings);
+    settingsPanel.addEventListener("keydown", function(e) {
+      if (e.key === "Escape") closeSettings();
+    });
+
+    document.body.appendChild(settingsPanel);
   }
 
   function showHistory() {
