@@ -74,3 +74,22 @@ def test_inject_template_replaces_block_and_adds_style() -> None:
     assert "_mdict_style.css" in updated
     assert "OLD" not in updated
     assert updated.count("mdict-tokenizer:begin") == 1
+
+
+def test_fuse_js_in_script_block() -> None:
+    """验证 build_script_block() 输出包含 _mdict_fuse.js"""
+    fields = [{"name": "test_field", "language": "ja"}]
+    block = build_script_block(fields)
+    assert "_mdict_fuse.js" in block
+    assert '<script src="_mdict_fuse.js"></script>' in block
+
+
+def test_fuse_js_before_dictionary() -> None:
+    """验证 _mdict_fuse.js 在 _mdict_dictionary.js 之前"""
+    fields = [{"name": "test_field", "language": "ja"}]
+    block = build_script_block(fields)
+    fuse_pos = block.index("_mdict_fuse.js")
+    dict_pos = block.index("_mdict_dictionary.js")
+    assert fuse_pos < dict_pos, (
+        f"fuse ({fuse_pos}) must be before dictionary ({dict_pos})"
+    )

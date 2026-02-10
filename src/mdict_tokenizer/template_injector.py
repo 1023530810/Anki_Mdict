@@ -192,6 +192,7 @@ def build_script_block(fields: list[dict[str, str]]) -> str:
         '<link rel="stylesheet" href="_mdict_style.css">\n'
         '<script src="_mdict_config.js"></script>\n'
         '<script src="_mdict_tokenizer.js"></script>\n'
+        '<script src="_mdict_fuse.js"></script>\n'
         '<script src="_mdict_dictionary.js"></script>\n'
         '<script src="_mdict_ui.js"></script>\n'
         '<script src="_mdict_main.js"></script>\n'
