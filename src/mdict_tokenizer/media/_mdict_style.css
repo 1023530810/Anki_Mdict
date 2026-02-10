@@ -1113,7 +1113,8 @@
   background: var(--md-card-bg);
   display: none;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
   border-bottom-left-radius: 8px;
   border-bottom-right-radius: 8px;
 }
