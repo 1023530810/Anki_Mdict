@@ -342,8 +342,19 @@
     });
   }
 
+  function isReadingEnabledForLanguage(language) {
+    var state = window.MD && window.MD.State;
+    var tokenizers = state && state.config && state.config.tokenizers;
+    if (!tokenizers || !tokenizers[language]) {
+      return false;
+    }
+    var t = tokenizers[language];
+    return language === "ja" ? !!t.showReading : !!t.showIPA;
+  }
+
   function tokenizeElement(element, language) {
     var config = window.MD && window.MD.Config ? window.MD.Config.getAll() : { readingMode: "lookup", tokenStyle: "underline" };
+    var readingEnabled = isReadingEnabledForLanguage(language);
     var walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null, false);
     var nodes = [];
     while (walker.nextNode()) {
@@ -359,6 +370,10 @@
         return tokenizePromise(text).then(function (tokens) {
           var fragment = document.createDocumentFragment();
           tokens.forEach(function (token) {
+            if (!readingEnabled) {
+              token.reading = "";
+              token.ipa = "";
+            }
             if (tokenHasWordChars(token.surface)) {
               fragment.appendChild(buildTokenSpan(token, config));
             } else {
