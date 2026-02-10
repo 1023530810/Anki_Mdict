@@ -9,6 +9,24 @@
 
   var indexCache = window.MD._persistent.indexCache = window.MD._persistent.indexCache || {};
   var shardCache = window.MD._persistent.shardCache = window.MD._persistent.shardCache || {};
+  var fuseCache = window.MD._persistent.fuseCache = window.MD._persistent.fuseCache || {};
+  var fuzzyResultCache = { keys: [], map: {} };
+  var FUZZY_RESULT_CACHE_MAX = 100;
+
+  function normalizeForSearch(text) {
+    var result = '';
+    var i, code;
+    text = text.toLowerCase();
+    for (i = 0; i < text.length; i++) {
+      code = text.charCodeAt(i);
+      if (code >= 0x30A1 && code <= 0x30F6) {
+        result += String.fromCharCode(code - 0x60);
+      } else {
+        result += text.charAt(i);
+      }
+    }
+    return result;
+  }
 
   function fetchJson(url) {
     if (window.fetch) {
@@ -174,6 +192,123 @@
     });
   }
 
+  function fuzzyResultCacheGet(key) {
+    return fuzzyResultCache.map[key] || null;
+  }
+
+  function fuzzyResultCachePut(key, value) {
+    if (fuzzyResultCache.map[key]) { return; }
+    if (fuzzyResultCache.keys.length >= FUZZY_RESULT_CACHE_MAX) {
+      var evict = fuzzyResultCache.keys.shift();
+      delete fuzzyResultCache.map[evict];
+    }
+    fuzzyResultCache.keys.push(key);
+    fuzzyResultCache.map[key] = value;
+  }
+
+  function buildFuseInstance(keys) {
+    var items = [];
+    var i;
+    for (i = 0; i < keys.length; i++) {
+      items.push({ key: normalizeForSearch(keys[i]), original: keys[i] });
+    }
+    return new window.Fuse(items, {
+      keys: ["key"],
+      threshold: 0.3,
+      ignoreLocation: true,
+      minMatchCharLength: 2,
+      includeScore: true
+    });
+  }
+
+  function getOrCreateFullFuse(dictionaryId, allKeys) {
+    if (fuseCache[dictionaryId]) {
+      return fuseCache[dictionaryId];
+    }
+    fuseCache[dictionaryId] = buildFuseInstance(allKeys);
+    return fuseCache[dictionaryId];
+  }
+
+  function formatFuseResults(results, limit) {
+    var out = [];
+    var i;
+    var max = Math.min(results.length, limit);
+    for (i = 0; i < max; i++) {
+      out.push({ key: results[i].item.original, score: results[i].score });
+    }
+    return out;
+  }
+
+  function fuzzySearchInDict(dictionaryId, word, maxResults) {
+    return loadIndex(dictionaryId).then(function (indexData) {
+      var entries = indexData.entries || {};
+      var allKeys = Object.keys(entries);
+      var normalizedWord = normalizeForSearch(word);
+      var candidates = [];
+      var i;
+
+      for (i = 0; i < allKeys.length; i++) {
+        if (normalizeForSearch(allKeys[i]).indexOf(normalizedWord) === 0) {
+          candidates.push(allKeys[i]);
+        }
+      }
+
+      if (candidates.length > 0 && candidates.length <= 5000) {
+        var fuse = buildFuseInstance(candidates);
+        var results = fuse.search(normalizedWord);
+        return { suggestions: formatFuseResults(results, maxResults), matchType: "prefix" };
+      }
+
+      var fullFuse = getOrCreateFullFuse(dictionaryId, allKeys);
+      var fullResults = fullFuse.search(normalizedWord);
+      return { suggestions: formatFuseResults(fullResults, maxResults), matchType: "fuzzy" };
+    });
+  }
+
+  function fuzzySearch(word, dictionaryId, options) {
+    options = options || {};
+    var language = options.language || null;
+    var maxResults = options.maxResults || 10;
+    var config = window.MD && window.MD.State ? window.MD.State.config : null;
+
+    if (!config || !word) {
+      return Promise.resolve({ suggestions: [], matchType: "prefix" });
+    }
+
+    var cacheKey = (dictionaryId || "") + ":" + word;
+    var cached = fuzzyResultCacheGet(cacheKey);
+    if (cached) {
+      return Promise.resolve(cached);
+    }
+
+    if (dictionaryId) {
+      return fuzzySearchInDict(dictionaryId, word, maxResults).then(function (result) {
+        fuzzyResultCachePut(cacheKey, result);
+        return result;
+      });
+    }
+
+    var candidates = getCandidatesByLanguage(config, language);
+    var userConfig = window.MD && window.MD.Config ? window.MD.Config.getAll() : null;
+    if (userConfig && userConfig.enabledDictionaries && userConfig.enabledDictionaries.length) {
+      candidates = candidates.filter(function (dict) {
+        return userConfig.enabledDictionaries.indexOf(dict.id) !== -1;
+      });
+    }
+
+    var chain = Promise.resolve({ suggestions: [], matchType: "prefix" });
+    candidates.forEach(function (dict) {
+      chain = chain.then(function (prev) {
+        if (prev.suggestions.length > 0) { return prev; }
+        return fuzzySearchInDict(dict.id, word, maxResults);
+      });
+    });
+    return chain.then(function (result) {
+      fuzzyResultCachePut(cacheKey, result);
+      return result;
+    });
+  }
+
   window.MD.Dictionary = {
     lookup: function (word, dictionaryId, options) {
       var normalized = normalizeLookupArgs(dictionaryId, options);
@@ -227,6 +362,9 @@
     getDictionaries: function () {
       var config = window.MD && window.MD.State ? window.MD.State.config : null;
       return config ? config.dictionaries || [] : [];
+    },
+    fuzzySearch: function (word, dictionaryId, options) {
+      return fuzzySearch(word, dictionaryId, options);
     },
     preloadIndexes: function (dictionaryIds) {
       if (!dictionaryIds || !dictionaryIds.length) {
