@@ -1044,6 +1044,10 @@
   height: 18px;
   display: block;
 }
+.md-panel-settings-btn svg {
+  width: 20px;
+  height: 20px;
+}
 .md-panel-settings-btn:focus,
 .md-panel-history-btn:focus { outline: none; border-color: var(--md-accent); }
 .md-panel-settings-btn:hover,
