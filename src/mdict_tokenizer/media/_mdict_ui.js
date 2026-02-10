@@ -1208,6 +1208,12 @@
     var fullHtml;
     var shouldUsePreferred;
     var dictId;
+    var fuzzyResult;
+    var fallbackHtml;
+    var links;
+    var s;
+    var i;
+    var j;
 
     requestId = ++window.MD._persistent.uiState.counterRequestId;
     lookupRequestId = ++window.MD._persistent.uiState.lookupRequestId;
@@ -1254,7 +1260,27 @@
           return;
         }
         if (!result.found) {
-          elements.contentBody.innerHTML = "<div class=\"md-empty\">未找到释义</div>";
+          fuzzyResult = MD.Dictionary.fuzzySearch(word, dictId, { language: lookupOptions.language });
+          if (fuzzyResult && fuzzyResult.suggestions && fuzzyResult.suggestions.length > 0) {
+            fallbackHtml = "<div class=\"md-fuzzy-fallback\">" +
+              "<div class=\"md-fuzzy-hint\">未找到「" + word + "」的释义。您是否要找：</div>" +
+              "<div class=\"md-fuzzy-suggestions\">";
+            for (i = 0; i < fuzzyResult.suggestions.length; i++) {
+              s = fuzzyResult.suggestions[i];
+              fallbackHtml += "<a href=\"#\" data-md-fuzzy-word=\"" + s.key + "\">" + s.key + "</a>";
+            }
+            fallbackHtml += "</div></div>";
+            elements.contentBody.innerHTML = fallbackHtml;
+            links = elements.contentBody.querySelectorAll("a[data-md-fuzzy-word]");
+            for (j = 0; j < links.length; j++) {
+              links[j].addEventListener("click", function (e) {
+                e.preventDefault();
+                lookupAndRender(this.getAttribute("data-md-fuzzy-word"), null, "");
+              });
+            }
+          } else {
+            elements.contentBody.innerHTML = "<div class=\"md-empty\">未找到释义</div>";
+          }
           elements.contentBody.scrollTop = 0;
          if (elements.title) {
            elements.title.textContent = word;

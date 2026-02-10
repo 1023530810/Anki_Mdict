@@ -1126,3 +1126,38 @@
 .md-suggestions .md-suggestion-item:hover {
   background: var(--md-dropdown-hover);
 }
+
+/* --------------------------------------------------------------------------
+   模糊回退建议
+   -------------------------------------------------------------------------- */
+.md-fuzzy-fallback {
+  padding: 12px;
+}
+
+.md-fuzzy-hint {
+  color: var(--md-text-muted);
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.md-fuzzy-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.md-fuzzy-suggestions a {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--md-button-bg);
+  color: var(--md-accent);
+  font-size: 14px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.md-fuzzy-suggestions a:hover {
+  background: var(--md-button-bg-hover);
+}
