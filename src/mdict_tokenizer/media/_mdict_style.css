@@ -1099,3 +1099,30 @@
   max-height: 70vh;
   overflow-y: auto;
 }
+
+/* --------------------------------------------------------------------------
+   搜索建议列表
+   -------------------------------------------------------------------------- */
+.md-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  display: none;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--md-dropdown-bg);
+  border: 1px solid var(--md-dropdown-border);
+  border-top: none;
+  box-shadow: 0 4px 8px var(--md-dropdown-shadow);
+}
+.md-suggestions .md-suggestion-item {
+  padding: 6px 10px;
+  cursor: pointer;
+  color: var(--md-text-primary);
+  font-size: var(--md-font-size);
+}
+.md-suggestions .md-suggestion-item:hover {
+  background: var(--md-dropdown-hover);
+}

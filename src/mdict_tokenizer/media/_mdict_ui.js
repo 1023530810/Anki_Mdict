@@ -59,6 +59,11 @@
     window.MD._persistent.uiState.preferredDictWord = '';
   }
 
+  // Feature 8: 搜索建议竞态保护
+  if (!window.MD._persistent.uiState.suggestRequestId) {
+    window.MD._persistent.uiState.suggestRequestId = 0;
+  }
+
   var historyKey = "mdict_history";
   var panelEl = window.MD._persistent.uiState.panelEl || null;
   var modalEl = window.MD._persistent.uiState.modalEl || null;
@@ -82,12 +87,17 @@
     header.appendChild(historyBtn);
 
     var searchInput = null;
+    var suggestions = null;
     if (features.search) {
       searchInput = document.createElement('input');
       searchInput.type = 'text';
       searchInput.className = 'md-panel-search';
       searchInput.placeholder = '搜索词条...';
       header.appendChild(searchInput);
+
+      suggestions = document.createElement('div');
+      suggestions.className = 'md-suggestions';
+      header.appendChild(suggestions);
     }
 
     var controls = document.createElement('div');
@@ -190,6 +200,7 @@
       header: header,
       title: title,
       searchInput: searchInput,
+      suggestions: suggestions,
       historyBtn: historyBtn,
       searchBtn: searchBtn,
       controls: controls,
@@ -911,51 +922,123 @@
     });
   }
 
-   function bindSearchEvents(elements) {
-     var debounceTimer;
-     var word;
-     var trimmedWord;
-     var language;
-     
-     if (!elements || !elements.searchBtn || !elements.searchInput) {
-       return;
-     }
+    function bindSearchEvents(elements) {
+      var debounceTimer;
+      var suggestTimer;
+      var word;
+      var trimmedWord;
+      var language;
+      var cachedSuggestions;
+      
+      if (!elements || !elements.searchBtn || !elements.searchInput) {
+        return;
+      }
 
-     debounceTimer = null;
+      debounceTimer = null;
+      suggestTimer = null;
+      cachedSuggestions = null;
 
-     elements.searchBtn.addEventListener('click', function() {
-       word = elements.searchInput.value;
-       if (word && word.replace(/^\s+|\s+$/g, '') !== '') {
-         clearTimeout(debounceTimer);
-         trimmedWord = word.replace(/^\s+|\s+$/g, '');
-         language = resolveLookupLanguage(trimmedWord);
-         lookupAndRender(trimmedWord, null, '', { language: language });
-       }
-     });
+      function hideSuggestions() {
+        var el = elements.suggestions || (elements.header && elements.header.querySelector('.md-suggestions'));
+        if (el) {
+          el.innerHTML = '';
+          el.style.display = 'none';
+        }
+      }
 
-     elements.searchInput.addEventListener('keydown', function(e) {
-       var key = e.key || e.keyCode;
-       if (key === 'Enter' || key === 13) {
-         clearTimeout(debounceTimer);
-         word = elements.searchInput.value;
-         if (word && word.replace(/^\s+|\s+$/g, '') !== '') {
-           trimmedWord = word.replace(/^\s+|\s+$/g, '');
-           language = resolveLookupLanguage(trimmedWord);
-           lookupAndRender(trimmedWord, null, '', { language: language });
-         }
-       }
-     });
+      function showSuggestions(items) {
+        var i, item, div;
+        if (!elements.suggestions || !items || !items.length) {
+          hideSuggestions();
+          return;
+        }
+        elements.suggestions.innerHTML = '';
+        for (i = 0; i < items.length && i < 10; i++) {
+          div = document.createElement('div');
+          div.className = 'md-suggestion-item';
+          div.textContent = items[i].key;
+          div.setAttribute('data-word', items[i].key);
+          elements.suggestions.appendChild(div);
+        }
+        elements.suggestions.style.display = 'block';
+      }
 
-     elements.searchInput.addEventListener('input', function(e) {
-       clearTimeout(debounceTimer);
-       word = e.target.value.replace(/^\s+|\s+$/g, '');
-       if (!word) return;
-       debounceTimer = setTimeout(function() {
-         language = resolveLookupLanguage(word);
-         lookupAndRender(word, null, '', { language: language });
-       }, 500);
-     });
-   }
+      elements.suggestions && elements.suggestions.addEventListener('mousedown', function(e) {
+        var target = e.target;
+        var selectedWord;
+        if (target && target.className === 'md-suggestion-item') {
+          selectedWord = target.getAttribute('data-word');
+          if (selectedWord) {
+            hideSuggestions();
+            cachedSuggestions = null;
+            language = resolveLookupLanguage(selectedWord);
+            lookupAndRender(selectedWord, null, '', { language: language });
+          }
+        }
+      });
+
+      elements.searchBtn.addEventListener('click', function() {
+        word = elements.searchInput.value;
+        if (word && word.replace(/^\s+|\s+$/g, '') !== '') {
+          clearTimeout(debounceTimer);
+          clearTimeout(suggestTimer);
+          hideSuggestions();
+          cachedSuggestions = null;
+          trimmedWord = word.replace(/^\s+|\s+$/g, '');
+          language = resolveLookupLanguage(trimmedWord);
+          lookupAndRender(trimmedWord, null, '', { language: language });
+        }
+      });
+
+      elements.searchInput.addEventListener('keydown', function(e) {
+        var key = e.key || e.keyCode;
+        if (key === 'Enter' || key === 13) {
+          clearTimeout(debounceTimer);
+          clearTimeout(suggestTimer);
+          hideSuggestions();
+          cachedSuggestions = null;
+          word = elements.searchInput.value;
+          if (word && word.replace(/^\s+|\s+$/g, '') !== '') {
+            trimmedWord = word.replace(/^\s+|\s+$/g, '');
+            language = resolveLookupLanguage(trimmedWord);
+            lookupAndRender(trimmedWord, null, '', { language: language });
+          }
+        }
+      });
+
+      elements.searchInput.addEventListener('input', function(e) {
+        clearTimeout(suggestTimer);
+        word = e.target.value.replace(/^\s+|\s+$/g, '');
+        if (!word) {
+          hideSuggestions();
+          cachedSuggestions = null;
+          return;
+        }
+        suggestTimer = setTimeout(function() {
+          var myRequestId = ++window.MD._persistent.uiState.suggestRequestId;
+          language = resolveLookupLanguage(word);
+          window.MD.Dictionary.fuzzySearch(word, null, { language: language }).then(function(result) {
+            if (window.MD._persistent.uiState.suggestRequestId !== myRequestId) {
+              return;
+            }
+            cachedSuggestions = (result && result.suggestions) || null;
+            showSuggestions(cachedSuggestions);
+          });
+        }, 500);
+      });
+
+      elements.searchInput.addEventListener('blur', function() {
+        setTimeout(function() {
+          hideSuggestions();
+        }, 200);
+      });
+
+      elements.searchInput.addEventListener('focus', function() {
+        if (cachedSuggestions && cachedSuggestions.length) {
+          showSuggestions(cachedSuggestions);
+        }
+      });
+    }
 
   function getHistory() {
     var raw = localStorage.getItem(historyKey);
@@ -1176,11 +1259,17 @@
          if (elements.title) {
            elements.title.textContent = word;
          }
-         refreshCounterForWord(word, requestId);
-         return;
-       }
-       
-        if (result.dictionaryId) {
+          refreshCounterForWord(word, requestId);
+          return;
+        }
+
+         var suggestEl = elements.suggestions || (elements.header && elements.header.querySelector('.md-suggestions'));
+         if (suggestEl) {
+           suggestEl.innerHTML = '';
+           suggestEl.style.display = 'none';
+         }
+        
+         if (result.dictionaryId) {
           window.MD.UI.currentDictId = result.dictionaryId;
           window.MD._persistent.uiState.currentDictId = window.MD.UI.currentDictId;
         }
