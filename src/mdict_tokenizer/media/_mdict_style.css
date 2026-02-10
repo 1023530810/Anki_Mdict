@@ -1101,24 +1101,28 @@
 }
 
 /* --------------------------------------------------------------------------
-   搜索建议列表
+   搜索建议列表（overlay 模式，复用 history 样式）
    -------------------------------------------------------------------------- */
 .md-suggestions {
   position: absolute;
-  top: 100%;
+  top: 0;
   left: 0;
   right: 0;
-  z-index: 9999;
+  bottom: 0;
+  z-index: 10;
+  background: var(--md-card-bg);
   display: none;
-  max-height: 240px;
-  overflow-y: auto;
-  background: var(--md-dropdown-bg);
-  border: 1px solid var(--md-dropdown-border);
-  border-top: none;
-  box-shadow: 0 4px 8px var(--md-dropdown-shadow);
+  flex-direction: column;
+  overflow: hidden;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
 }
 .md-suggestions .md-suggestion-item {
-  padding: 6px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 15px;
+  border-bottom: 1px solid var(--md-divider);
   cursor: pointer;
   color: var(--md-text-primary);
   font-size: var(--md-font-size);

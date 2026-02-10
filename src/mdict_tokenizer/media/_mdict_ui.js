@@ -97,7 +97,6 @@
 
       suggestions = document.createElement('div');
       suggestions.className = 'md-suggestions';
-      header.appendChild(suggestions);
     }
 
     var controls = document.createElement('div');
@@ -180,6 +179,9 @@
     hotzoneRight.setAttribute('data-dir', 'next');
 
     content.appendChild(contentBody);
+    if (suggestions) {
+      content.appendChild(suggestions);
+    }
     content.appendChild(hotzoneLeft);
     content.appendChild(hotzoneRight);
 
@@ -928,7 +930,6 @@
       var word;
       var trimmedWord;
       var language;
-      var cachedSuggestions;
       
       if (!elements || !elements.searchBtn || !elements.searchInput) {
         return;
@@ -936,10 +937,9 @@
 
       debounceTimer = null;
       suggestTimer = null;
-      cachedSuggestions = null;
 
       function hideSuggestions() {
-        var el = elements.suggestions || (elements.header && elements.header.querySelector('.md-suggestions'));
+        var el = elements.suggestions || (elements.content && elements.content.querySelector('.md-suggestions'));
         if (el) {
           el.innerHTML = '';
           el.style.display = 'none';
@@ -947,35 +947,37 @@
       }
 
       function showSuggestions(items) {
-        var i, item, div;
-        if (!elements.suggestions || !items || !items.length) {
+        var i, div;
+        var el = elements.suggestions || (elements.content && elements.content.querySelector('.md-suggestions'));
+        if (!el || !items || !items.length) {
           hideSuggestions();
           return;
         }
-        elements.suggestions.innerHTML = '';
+        el.innerHTML = '';
         for (i = 0; i < items.length && i < 10; i++) {
           div = document.createElement('div');
           div.className = 'md-suggestion-item';
           div.textContent = items[i].key;
           div.setAttribute('data-word', items[i].key);
-          elements.suggestions.appendChild(div);
+          el.appendChild(div);
         }
-        elements.suggestions.style.display = 'block';
+        el.style.display = 'flex';
       }
 
-      elements.suggestions && elements.suggestions.addEventListener('mousedown', function(e) {
-        var target = e.target;
-        var selectedWord;
-        if (target && target.className === 'md-suggestion-item') {
-          selectedWord = target.getAttribute('data-word');
-          if (selectedWord) {
-            hideSuggestions();
-            cachedSuggestions = null;
-            language = resolveLookupLanguage(selectedWord);
-            lookupAndRender(selectedWord, null, '', { language: language });
+      if (elements.suggestions) {
+        elements.suggestions.addEventListener('click', function(e) {
+          var target = e.target;
+          var selectedWord;
+          if (target && target.classList.contains('md-suggestion-item')) {
+            selectedWord = target.getAttribute('data-word');
+            if (selectedWord) {
+              hideSuggestions();
+              language = resolveLookupLanguage(selectedWord);
+              lookupAndRender(selectedWord, null, '', { language: language });
+            }
           }
-        }
-      });
+        });
+      }
 
       elements.searchBtn.addEventListener('click', function() {
         word = elements.searchInput.value;
@@ -983,7 +985,6 @@
           clearTimeout(debounceTimer);
           clearTimeout(suggestTimer);
           hideSuggestions();
-          cachedSuggestions = null;
           trimmedWord = word.replace(/^\s+|\s+$/g, '');
           language = resolveLookupLanguage(trimmedWord);
           lookupAndRender(trimmedWord, null, '', { language: language });
@@ -996,7 +997,6 @@
           clearTimeout(debounceTimer);
           clearTimeout(suggestTimer);
           hideSuggestions();
-          cachedSuggestions = null;
           word = elements.searchInput.value;
           if (word && word.replace(/^\s+|\s+$/g, '') !== '') {
             trimmedWord = word.replace(/^\s+|\s+$/g, '');
@@ -1011,7 +1011,6 @@
         word = e.target.value.replace(/^\s+|\s+$/g, '');
         if (!word) {
           hideSuggestions();
-          cachedSuggestions = null;
           return;
         }
         suggestTimer = setTimeout(function() {
@@ -1021,22 +1020,17 @@
             if (window.MD._persistent.uiState.suggestRequestId !== myRequestId) {
               return;
             }
-            cachedSuggestions = (result && result.suggestions) || null;
-            showSuggestions(cachedSuggestions);
+            var items = (result && result.suggestions) || null;
+            showSuggestions(items);
           });
         }, 500);
       });
 
-      elements.searchInput.addEventListener('blur', function() {
-        setTimeout(function() {
-          hideSuggestions();
-        }, 200);
-      });
-
-      elements.searchInput.addEventListener('focus', function() {
-        if (cachedSuggestions && cachedSuggestions.length) {
-          showSuggestions(cachedSuggestions);
-        }
+      document.addEventListener('click', function(e) {
+        var el = elements.suggestions || (elements.content && elements.content.querySelector('.md-suggestions'));
+        if (!el || el.style.display === 'none') { return; }
+        if (el.contains(e.target) || elements.searchInput.contains(e.target)) { return; }
+        hideSuggestions();
       });
     }
 
@@ -1291,7 +1285,7 @@
           return;
         }
 
-         var suggestEl = elements.suggestions || (elements.header && elements.header.querySelector('.md-suggestions'));
+         var suggestEl = elements.suggestions || (elements.content && elements.content.querySelector('.md-suggestions'));
          if (suggestEl) {
            suggestEl.innerHTML = '';
            suggestEl.style.display = 'none';
