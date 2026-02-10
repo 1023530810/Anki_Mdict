@@ -10,6 +10,7 @@
     extractLemma: true,
     fontSize: 16,
     clickBehavior: "click",
+    enableHistory: true,
     historyLimit: 50,
     popupHeight: "medium",
     tokenStyle: "underline",
