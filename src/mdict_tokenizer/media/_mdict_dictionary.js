@@ -216,7 +216,7 @@
       keys: ["key"],
       threshold: 0.3,
       ignoreLocation: true,
-      minMatchCharLength: 2,
+      minMatchCharLength: 1,
       includeScore: true
     });
   }
@@ -245,7 +245,7 @@
       var allKeys = Object.keys(entries);
       var normalizedWord = normalizeForSearch(word);
       var candidates = [];
-      var i;
+      var i, out;
 
       for (i = 0; i < allKeys.length; i++) {
         if (normalizeForSearch(allKeys[i]).indexOf(normalizedWord) === 0) {
@@ -253,10 +253,13 @@
         }
       }
 
-      if (candidates.length > 0 && candidates.length <= 5000) {
-        var fuse = buildFuseInstance(candidates);
-        var results = fuse.search(normalizedWord);
-        return { suggestions: formatFuseResults(results, maxResults), matchType: "prefix" };
+      if (candidates.length > 0) {
+        candidates.sort(function (a, b) { return a.length - b.length; });
+        out = [];
+        for (i = 0; i < candidates.length && i < maxResults; i++) {
+          out.push({ key: candidates[i], score: 0 });
+        }
+        return { suggestions: out, matchType: "prefix" };
       }
 
       var fullFuse = getOrCreateFullFuse(dictionaryId, allKeys);
