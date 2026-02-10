@@ -82,3 +82,51 @@ def test_no_ls_dependencies():
     code = "\n".join(lines)
 
     assert "ls-" not in code, "Found 'ls-' prefix reference"
+
+
+def test_fuzzy_search_api_exists():
+    """模糊搜索：fuzzySearch 方法存在于 _mdict_dictionary.js"""
+    js = Path("src/mdict_tokenizer/media/_mdict_dictionary.js").read_text()
+    assert "fuzzySearch" in js
+
+
+def test_fuzzy_normalize_exists():
+    """模糊搜索：normalizeForSearch 函数存在"""
+    js = Path("src/mdict_tokenizer/media/_mdict_dictionary.js").read_text()
+    assert re.search(r"function normalizeForSearch", js)
+
+
+def test_suggestions_ui_exists():
+    """模糊搜索：_mdict_ui.js 包含 md-suggestions"""
+    ui_js = Path("src/mdict_tokenizer/media/_mdict_ui.js").read_text()
+    assert "md-suggestions" in ui_js
+
+
+def test_fuzzy_fallback_exists():
+    """模糊搜索：_mdict_ui.js 包含 md-fuzzy-fallback"""
+    ui_js = Path("src/mdict_tokenizer/media/_mdict_ui.js").read_text()
+    assert "md-fuzzy-fallback" in ui_js
+
+
+def test_fuse_js_exists():
+    """模糊搜索：_mdict_fuse.js 文件存在"""
+    assert Path("src/mdict_tokenizer/media/_mdict_fuse.js").exists()
+
+
+def test_es5_compatibility_dictionary():
+    """ES5 兼容性：_mdict_dictionary.js 无 ES6+ 语法"""
+    js = Path("src/mdict_tokenizer/media/_mdict_dictionary.js").read_text()
+    lines = [line for line in js.split("\n") if not line.strip().startswith("//")]
+    code = "\n".join(lines)
+
+    assert "const " not in code, "Found 'const' declaration"
+    assert "let " not in code, "Found 'let' declaration"
+    assert " => " not in code, "Found arrow function"
+    assert "async " not in code, "Found async function"
+
+
+def test_fuzzy_styles_exist():
+    """模糊搜索：_mdict_style.css 包含建议列表和回退样式"""
+    css = Path("src/mdict_tokenizer/media/_mdict_style.css").read_text()
+    assert ".md-suggestions" in css
+    assert ".md-fuzzy-fallback" in css
