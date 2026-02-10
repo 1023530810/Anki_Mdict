@@ -1023,7 +1023,8 @@
   align-items: center;
   justify-content: center;
   height: var(--md-control-height);
-  padding: 6px 10px;
+  padding: 6px 8px;
+  width: var(--md-control-height);
   border-radius: 6px !important;
   border: 1px solid var(--md-divider);
   background: var(--md-card-bg);
@@ -1037,10 +1038,7 @@
   transition: border-color 0.2s;
   white-space: nowrap;
 }
-.md-panel-history-btn {
-  padding: 6px 8px;
-  width: var(--md-control-height);
-}
+.md-panel-settings-btn svg,
 .md-panel-history-btn svg {
   width: 18px;
   height: 18px;
