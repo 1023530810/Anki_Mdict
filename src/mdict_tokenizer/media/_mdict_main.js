@@ -105,6 +105,7 @@
 
   function scheduleTokenizeRetry() {
     var attempt = 0;
+    var config;
     function tryRetry() {
       if (attempt >= RETRY_DELAYS.length || !needsTokenizeRetry()) {
         return;
@@ -113,7 +114,10 @@
         if (!needsTokenizeRetry()) {
           return;
         }
-        tokenizeFields().then(function () {
+        config = window.MD.State ? window.MD.State.config : {};
+        initTokenizers(config).catch(function () {}).then(function () {
+          return tokenizeFields();
+        }).then(function () {
           attempt++;
           tryRetry();
         });
@@ -156,7 +160,9 @@
           config: config || {},
           targetContainer: targetContainer,
         };
-        return initTokenizers(config);
+        return initTokenizers(config).catch(function () {
+          // Tokenizer failure is non-fatal: dictionary still works
+        });
       })
       .then(function () {
         if (autoTokenize) {
@@ -174,7 +180,7 @@
         emit("md:ready", {});
       })
       .catch(function (error) {
-        emit("md:error", { code: error.message || "TOKENIZER_LOAD_FAILED", message: error.message || "初始化失败" });
+        emit("md:error", { code: error.message || "INIT_FAILED", message: error.message || "初始化失败" });
         throw error;
       });
   }
