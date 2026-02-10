@@ -88,6 +88,40 @@
     return languages;
   }
 
+  var RETRY_DELAYS = [300, 800, 2000];
+
+  function needsTokenizeRetry() {
+    var fields = document.querySelectorAll(".mdict-field[data-mdict-lang]");
+    if (!fields.length) {
+      return false;
+    }
+    for (var i = 0; i < fields.length; i++) {
+      if (!fields[i].querySelector(".md-token")) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function scheduleTokenizeRetry() {
+    var attempt = 0;
+    function tryRetry() {
+      if (attempt >= RETRY_DELAYS.length || !needsTokenizeRetry()) {
+        return;
+      }
+      setTimeout(function () {
+        if (!needsTokenizeRetry()) {
+          return;
+        }
+        tokenizeFields().then(function () {
+          attempt++;
+          tryRetry();
+        });
+      }, RETRY_DELAYS[attempt]);
+    }
+    tryRetry();
+  }
+
   function doInit(options) {
     var opts = options || {};
     var configPath = opts.configPath || "_mdict_config.json";
@@ -131,6 +165,9 @@
         return null;
       })
       .then(function () {
+        if (autoTokenize) {
+          scheduleTokenizeRetry();
+        }
         if (window.MD.UI && window.MD.UI.isEmbedded()) {
           window.MD.UI.ensurePanel();
         }
