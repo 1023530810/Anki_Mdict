@@ -296,14 +296,25 @@
       });
     }
 
-    var chain = Promise.resolve({ suggestions: [], matchType: "prefix" });
-    candidates.forEach(function (dict) {
-      chain = chain.then(function (prev) {
-        if (prev.suggestions.length > 0) { return prev; }
-        return fuzzySearchInDict(dict.id, word, maxResults);
-      });
+    var searches = candidates.map(function (dict) {
+      return fuzzySearchInDict(dict.id, word, maxResults);
     });
-    return chain.then(function (result) {
+    return Promise.all(searches).then(function (results) {
+      var seen = {};
+      var merged = [];
+      var i, j, s, sug, result;
+      for (i = 0; i < results.length; i++) {
+        sug = results[i].suggestions || [];
+        for (j = 0; j < sug.length; j++) {
+          s = sug[j];
+          if (!seen[s.key]) {
+            seen[s.key] = true;
+            merged.push(s);
+          }
+        }
+      }
+      merged.sort(function (a, b) { return a.score - b.score; });
+      result = { suggestions: merged.slice(0, maxResults), matchType: "fuzzy" };
       fuzzyResultCachePut(cacheKey, result);
       return result;
     });
