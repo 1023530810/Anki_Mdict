@@ -1037,6 +1037,15 @@
   transition: border-color 0.2s;
   white-space: nowrap;
 }
+.md-panel-history-btn {
+  padding: 6px 8px;
+  width: var(--md-control-height);
+}
+.md-panel-history-btn svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
 .md-panel-settings-btn:focus,
 .md-panel-history-btn:focus { outline: none; border-color: var(--md-accent); }
 .md-panel-settings-btn:hover,
