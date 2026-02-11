@@ -246,7 +246,9 @@
           scheduleTokenizeRetry();
         }
         if (window.MD.UI && window.MD.UI.isEmbedded()) {
-          window.MD.UI.ensurePanel();
+          if (resolveDeckFields("", window.MDICT_DECK_INJECTIONS || [], window.MDICT_FIELDS || []).length > 0) {
+            window.MD.UI.ensurePanel();
+          }
         }
         emit("md:ready", {});
       })
