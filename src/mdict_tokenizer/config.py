@@ -66,12 +66,16 @@ class TokenizerConfig:
 
 
 @dataclass
-class TemplateInjection:
-    """模板注入配置"""
+class DeckFieldConfig:
+    deck_name: str
+    fields: list[dict[str, str]]
 
+
+@dataclass
+class DeckInjection:
     note_type_name: str
     note_type_id: int
-    fields: list[dict[str, str]]
+    deck_configs: list[DeckFieldConfig]
     injected_at: str
 
 
@@ -82,7 +86,7 @@ class MainConfig:
     version: str = CONFIG_VERSION
     dictionaries: list[Dictionary] = field(default_factory=list)
     tokenizers: dict[str, TokenizerConfig] = field(default_factory=dict)
-    injections: list[TemplateInjection] = field(default_factory=list)
+    injections: list[DeckInjection] = field(default_factory=list)
 
 
 def get_media_dir_from_mw(mw: object) -> Path:
@@ -179,7 +183,13 @@ def _to_dict(config: MainConfig) -> dict[str, object]:
             {
                 "noteTypeName": injection.note_type_name,
                 "noteTypeId": injection.note_type_id,
-                "fields": injection.fields,
+                "deckConfigs": [
+                    {
+                        "deckName": deck_config.deck_name,
+                        "fields": deck_config.fields,
+                    }
+                    for deck_config in injection.deck_configs
+                ],
                 "injectedAt": injection.injected_at,
             }
             for injection in config.injections
@@ -255,32 +265,80 @@ def _from_dict(raw: dict[str, object]) -> MainConfig:
     if tokenizers:
         config.tokenizers = tokenizers
 
-    injections: list[TemplateInjection] = []
+    injections: list[DeckInjection] = []
     raw_injections = raw.get("injections")
     if isinstance(raw_injections, list):
         for item in raw_injections:
             if not isinstance(item, dict):
                 continue
-            fields_value = item.get("fields")
-            fields = fields_value if isinstance(fields_value, list) else []
+            deck_configs: list[DeckFieldConfig] = []
+            deck_configs_value = item.get("deckConfigs")
+            if isinstance(deck_configs_value, list):
+                for deck_item in deck_configs_value:
+                    if not isinstance(deck_item, dict):
+                        continue
+                    fields_value = deck_item.get("fields")
+                    fields = fields_value if isinstance(fields_value, list) else []
+                    deck_configs.append(
+                        DeckFieldConfig(
+                            deck_name=str(deck_item.get("deckName", "")),
+                            fields=[
+                                {
+                                    "name": str(field.get("name", "")),
+                                    "language": str(field.get("language", "")),
+                                }
+                                for field in fields
+                                if isinstance(field, dict)
+                            ],
+                        )
+                    )
             injections.append(
-                TemplateInjection(
+                DeckInjection(
                     note_type_name=str(item.get("noteTypeName", "")),
                     note_type_id=_safe_int(item.get("noteTypeId", 0)),
-                    fields=[
-                        {
-                            "name": str(field.get("name", "")),
-                            "language": str(field.get("language", "")),
-                        }
-                        for field in fields
-                        if isinstance(field, dict)
-                    ],
+                    deck_configs=deck_configs,
                     injected_at=str(item.get("injectedAt", "")),
                 )
             )
     config.injections = injections
 
     return config
+
+
+def resolve_deck_language(
+    injections: list[DeckInjection],
+    note_type_id: int,
+    deck_name: str,
+    field_name: str,
+) -> str | None:
+    target = next(
+        (
+            injection
+            for injection in injections
+            if injection.note_type_id == note_type_id
+        ),
+        None,
+    )
+    if target is None:
+        return None
+
+    search_name = deck_name
+    while True:
+        for deck_config in target.deck_configs:
+            if deck_config.deck_name != search_name:
+                continue
+            for field in deck_config.fields:
+                if str(field.get("name", "")) != field_name:
+                    continue
+                language = field.get("language")
+                if isinstance(language, str):
+                    return language if language else None
+                if language is None:
+                    return None
+                return str(language)
+        if "::" not in search_name:
+            return None
+        search_name = "::".join(search_name.split("::")[:-1])
 
 
 def collect_languages(
