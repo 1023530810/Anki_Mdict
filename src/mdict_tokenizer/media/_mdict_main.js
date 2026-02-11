@@ -56,9 +56,76 @@
     document.dispatchEvent(new CustomEvent(name, { detail: detail }));
   }
 
-  function getFieldLanguages(fields) {
+  function getDeckNameFromDom() {
+    var deckEl = document.getElementById("mdict-deck-name");
+    if (!deckEl) {
+      return "";
+    }
+    var deckName = deckEl.textContent || deckEl.innerText || "";
+    return deckName.replace(/^\s+|\s+$/g, "");
+  }
+
+  function resolveDeckFields(deckName, deckInjections, fieldNames) {
+    var injections = Array.isArray(deckInjections) ? deckInjections : [];
+    var allowedNames = Array.isArray(fieldNames) ? fieldNames : [];
+    var allowedMap = {};
+    var domDeckName = getDeckNameFromDom();
+    var currentDeckName = "";
+    var i;
+    var searchName = "";
+    var matched = null;
+    var resolved = null;
+    if (domDeckName) {
+      currentDeckName = domDeckName;
+    } else if (typeof deckName === "string") {
+      currentDeckName = deckName;
+    }
+
+    if (!currentDeckName) {
+      return [];
+    }
+
+    if (allowedNames.length) {
+      allowedNames.forEach(function (name) {
+        allowedMap[name] = true;
+      });
+    }
+
+    searchName = currentDeckName;
+    while (true) {
+      matched = null;
+      for (i = 0; i < injections.length; i++) {
+        if (injections[i] && injections[i].deckName === searchName) {
+          matched = injections[i];
+          break;
+        }
+      }
+      if (matched && Array.isArray(matched.fields)) {
+        resolved = [];
+        matched.fields.forEach(function (field) {
+          if (!field || !field.name || !field.language) {
+            return;
+          }
+          if (allowedNames.length && !allowedMap[field.name]) {
+            return;
+          }
+          resolved.push({ name: field.name, language: field.language });
+        });
+        return resolved;
+      }
+      if (searchName.indexOf("::") === -1) {
+        return [];
+      }
+      searchName = searchName.split("::");
+      searchName.pop();
+      searchName = searchName.join("::");
+    }
+  }
+
+  function getFieldLanguages(fieldNames, deckInjections) {
     var languageMap = {};
-    if (!fields || !fields.length) {
+    var fields = resolveDeckFields("", deckInjections, fieldNames);
+    if (!fields.length) {
       return [];
     }
     fields.forEach(function (field) {
@@ -73,7 +140,10 @@
 
   function getInitLanguages(config) {
     var tokenizers = config.tokenizers || {};
-    var fieldLanguages = getFieldLanguages(window.MDICT_FIELDS || []);
+    var fieldLanguages = getFieldLanguages(
+      window.MDICT_FIELDS || [],
+      window.MDICT_DECK_INJECTIONS || []
+    );
     var languages = [];
     Object.keys(tokenizers).forEach(function (language) {
       var tokenizer = tokenizers[language] || {};
@@ -92,10 +162,11 @@
 
   function needsTokenizeRetry() {
     var fields = document.querySelectorAll(".mdict-field[data-mdict-lang]");
+    var i;
     if (!fields.length) {
       return false;
     }
-    for (var i = 0; i < fields.length; i++) {
+    for (i = 0; i < fields.length; i++) {
       if (!fields[i].querySelector(".md-token")) {
         return true;
       }
@@ -260,7 +331,9 @@
   }
 
   function tokenizeFields() {
-    var fields = window.MDICT_FIELDS || [];
+    var fieldNames = window.MDICT_FIELDS || [];
+    var deckInjections = window.MDICT_DECK_INJECTIONS || [];
+    var fields = resolveDeckFields("", deckInjections, fieldNames);
     var promises = [];
     var initLanguages = [];
     var loadedLanguages = window.MD._persistent.loadedLanguages;
@@ -277,6 +350,22 @@
     if (window.MD.State && window.MD.State.initLanguages) {
       initLanguages = window.MD.State.initLanguages;
     }
+
+    document.querySelectorAll(".mdict-field").forEach(function (element) {
+      element.removeAttribute("data-mdict-lang");
+    });
+
+    if (!fields.length) {
+      return Promise.resolve([]);
+    }
+
+    fields.forEach(function (field) {
+      var selector = ".mdict-field[data-mdict-field='" + field.name + "']";
+      var elements = document.querySelectorAll(selector);
+      elements.forEach(function (element) {
+        element.setAttribute("data-mdict-lang", field.language);
+      });
+    });
 
     allElements = document.querySelectorAll('.mdict-field[data-mdict-lang]');
     for (i = 0; i < allElements.length; i++) {

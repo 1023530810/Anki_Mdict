@@ -6,7 +6,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .config import TemplateInjection, load_config, save_config
+from .config import DeckFieldConfig, DeckInjection, load_config, save_config
 
 INJECT_BEGIN = "<!-- mdict-tokenizer:begin -->"
 INJECT_END = "<!-- mdict-tokenizer:end -->"
@@ -30,15 +30,22 @@ class TemplateInjector:
         self.mw: object = mw
         self.media_dir: Path = media_dir
 
-    def inject(self, note_type_id: int, fields: list[dict[str, str]]) -> list[str]:
+    def inject(
+        self,
+        note_type_id: int,
+        fields: list[dict[str, str]],
+        deck_configs: list[dict[str, object]] | None = None,
+    ) -> list[str]:
         """注入模板"""
         model_manager = getattr(getattr(self.mw, "col", None), "models", None)
         model = model_manager.get(note_type_id) if model_manager else None
         if model is None:
             raise RuntimeError("笔记类型不存在")
 
-        script_block = build_script_block(fields)
-        field_stats = {field["name"]: False for field in fields if field.get("name")}
+        field_names = [field["name"] for field in fields if field.get("name")]
+        deck_configs_payload = deck_configs or []
+        script_block = build_script_block(field_names, deck_configs_payload)
+        field_stats = {name: False for name in field_names}
         for tmpl in model.get("tmpls", []):
             tmpl["qfmt"] = inject_template_html(
                 tmpl.get("qfmt", ""), fields, script_block, field_stats
@@ -49,7 +56,7 @@ class TemplateInjector:
 
         if model_manager:
             model_manager.save(model)
-        self._record_injection(model, fields)
+        self._record_injection(model, deck_configs_payload)
         return [name for name, found in field_stats.items() if not found]
 
     def clear(self, note_type_id: int) -> None:
@@ -72,7 +79,7 @@ class TemplateInjector:
         save_config(self.media_dir, config)
 
     def _record_injection(
-        self, model: dict[str, object], fields: list[dict[str, str]]
+        self, model: dict[str, object], deck_configs: list[dict[str, object]]
     ) -> None:
         """记录注入配置"""
         config = load_config(self.media_dir)
@@ -80,11 +87,30 @@ class TemplateInjector:
         config.injections = [
             item for item in config.injections if item.note_type_id != note_type_id
         ]
+        normalized_decks: list[DeckFieldConfig] = []
+        for deck_config in deck_configs:
+            if not isinstance(deck_config, dict):
+                continue
+            fields_value = deck_config.get("fields")
+            fields = fields_value if isinstance(fields_value, list) else []
+            normalized_decks.append(
+                DeckFieldConfig(
+                    deck_name=str(deck_config.get("deckName") or ""),
+                    fields=[
+                        {
+                            "name": str(field.get("name") or ""),
+                            "language": str(field.get("language") or ""),
+                        }
+                        for field in fields
+                        if isinstance(field, dict)
+                    ],
+                )
+            )
         config.injections.append(
-            TemplateInjection(
+            DeckInjection(
                 note_type_name=str(model.get("name", "")),
                 note_type_id=note_type_id,
-                fields=fields,
+                deck_configs=normalized_decks,
                 injected_at=datetime.now(timezone.utc).isoformat(),
             )
         )
@@ -184,11 +210,16 @@ def _restore_mdict_spans(html: str, placeholders: list[str]) -> str:
     return restored
 
 
-def build_script_block(fields: list[dict[str, str]]) -> str:
+def build_script_block(
+    field_names: list[str],
+    deck_configs: list[dict[str, object]],
+) -> str:
     """生成脚本注入块"""
-    field_payload = json_dumps(fields)
+    field_payload = json_dumps(field_names)
+    deck_payload = json_dumps(deck_configs)
     return (
         f"{INJECT_BEGIN}\n"
+        '<div id="mdict-deck-name" style="display:none;">{{Deck}}</div>\n'
         '<link rel="stylesheet" href="_mdict_style.css">\n'
         '<script src="_mdict_config.js"></script>\n'
         '<script src="_mdict_tokenizer.js"></script>\n'
@@ -198,6 +229,7 @@ def build_script_block(fields: list[dict[str, str]]) -> str:
         '<script src="_mdict_main.js"></script>\n'
         "<script>\n"
         f"window.MDICT_FIELDS = {field_payload};\n"
+        f"window.MDICT_DECK_INJECTIONS = {deck_payload};\n"
         "if (window.MD && typeof window.MD.init === 'function') {\n"
         "  window.MD.init({ autoTokenize: true });\n"
         "}\n"
@@ -221,7 +253,7 @@ def remove_injection(html: str) -> str:
     return without_span
 
 
-def json_dumps(payload: list[dict[str, str]]) -> str:
+def json_dumps(payload: object) -> str:
     """JSON 序列化"""
     import json
 
