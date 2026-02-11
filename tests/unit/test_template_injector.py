@@ -91,3 +91,26 @@ def test_fuse_js_before_dictionary() -> None:
     assert fuse_pos < dict_pos, (
         f"fuse ({fuse_pos}) must be before dictionary ({dict_pos})"
     )
+
+
+def test_build_script_block_contains_deck_element() -> None:
+    """验证 build_script_block() 输出包含 {{Deck}} 隐藏元素"""
+    block = build_script_block(["Front"], [])
+    assert "mdict-deck-name" in block
+    assert "{{Deck}}" in block
+
+
+def test_build_script_block_contains_deck_injections() -> None:
+    """验证 build_script_block() 输出包含 MDICT_DECK_INJECTIONS"""
+    deck_configs = [{"deckName": "日語", "fields": [{"name": "Front", "language": "ja"}]}]
+    block = build_script_block(["Front"], deck_configs)
+    assert "MDICT_DECK_INJECTIONS" in block
+    assert "日語" in block
+
+
+def test_build_script_block_has_mdict_fields() -> None:
+    """验证 build_script_block() 输出包含 MDICT_FIELDS（字段名列表）"""
+    block = build_script_block(["Front", "Back"], [])
+    assert "MDICT_FIELDS" in block
+    assert "Front" in block
+    assert "Back" in block
