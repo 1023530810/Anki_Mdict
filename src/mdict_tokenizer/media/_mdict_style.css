@@ -189,8 +189,13 @@
   background: var(--md-token-highlight);
   border-radius: 3px;
   padding: 1px 4px;
-  margin: 0 1px;
+  margin: 2px 1px;
   display: inline-block;
+}
+
+.md-token-style-background.md-selected {
+  background: var(--md-accent-bg);
+  color: var(--md-text-primary);
 }
 
 .md-config-panel,
