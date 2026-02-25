@@ -832,7 +832,7 @@
   transform: translate(-50%, -50%) scale(0.95);
   width: 90%;
   max-width: 480px;
-  height: 50vh;
+  height: calc(var(--ls-vh, 100dvh) * 0.5);
   background: var(--md-popup-bg);
   border: 1px solid var(--md-popup-border);
   border-radius: 12px;
@@ -856,19 +856,19 @@
    高度变体 — 固定 height 替代 max-height
    -------------------------------------------------------------------------- */
 .md-modal-small {
-  height: 30vh;
+  height: calc(var(--ls-vh, 100dvh) * 0.3);
 }
 
 .md-modal-medium {
-  height: 50vh;
+  height: calc(var(--ls-vh, 100dvh) * 0.5);
 }
 
 .md-modal-large {
-  height: 70vh;
+  height: calc(var(--ls-vh, 100dvh) * 0.7);
 }
 
 .md-modal-full {
-  height: 90vh;
+  height: calc(var(--ls-vh, 100dvh) * 0.9);
 }
 
 /* --------------------------------------------------------------------------
@@ -1068,9 +1068,12 @@
   position: relative;
   width: 90%;
   max-width: 360px;
+  max-height: calc(var(--ls-vh, 100dvh) * 0.85);
   background: var(--md-card-bg);
   border-radius: 12px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .md-settings-header {
@@ -1103,7 +1106,7 @@
 
 .md-settings-body {
   padding: 16px;
-  max-height: 70vh;
+  max-height: calc(var(--ls-vh, 100dvh) * 0.72 - 60px);
   overflow-y: auto;
 }
 
