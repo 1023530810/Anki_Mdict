@@ -967,18 +967,37 @@
       }
 
       if (elements.suggestions) {
-        elements.suggestions.addEventListener('click', function(e) {
+        var suggestTouchMoved = false;
+
+        function handleSuggestionTap(e) {
           var target = e.target;
           var selectedWord;
           if (target && target.classList.contains('md-suggestion-item')) {
             selectedWord = target.getAttribute('data-word');
             if (selectedWord) {
+              e.preventDefault();
+              e.stopPropagation();
               hideSuggestions();
               language = resolveLookupLanguage(selectedWord);
               lookupAndRender(selectedWord, null, '', { language: language });
             }
           }
+        }
+
+        elements.suggestions.addEventListener('touchstart', function() {
+          suggestTouchMoved = false;
+        }, { passive: true });
+
+        elements.suggestions.addEventListener('touchmove', function() {
+          suggestTouchMoved = true;
+        }, { passive: true });
+
+        elements.suggestions.addEventListener('touchend', function(e) {
+          if (suggestTouchMoved) return;
+          handleSuggestionTap(e);
         });
+
+        elements.suggestions.addEventListener('click', handleSuggestionTap);
       }
 
       elements.searchBtn.addEventListener('click', function() {
