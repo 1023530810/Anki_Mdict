@@ -193,11 +193,6 @@
   display: inline-block;
 }
 
-.md-token-style-background.md-selected {
-  background: var(--md-accent-bg);
-  color: var(--md-text-primary);
-}
-
 .md-config-panel,
 .md-history-panel {
   background: var(--md-card-bg);
@@ -1023,6 +1018,11 @@
 .md-token.md-selected {
   background: var(--md-token-highlight, rgba(255, 215, 0, 0.3));
   border-radius: 2px;
+}
+
+/* 背景色样式的选中态需要更强的区分 */
+.md-token-style-background.md-selected {
+  background: var(--md-accent-bg);
 }
 
 /* ===== Settings Overlay ===== */
