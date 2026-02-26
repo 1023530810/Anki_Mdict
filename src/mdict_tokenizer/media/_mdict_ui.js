@@ -1360,7 +1360,6 @@
    */
   function bindEntryTabs(container) {
     if (!container) return;
-    if (container.dataset.mdictEntryTabBound === '1') return;
 
     // 找到所有带 hm 属性的 entry 元素
     var allEntries = container.querySelectorAll('.entry[hm]');
@@ -1401,7 +1400,6 @@
     if (currentGroup.length >= 2) groups.push(currentGroup);
 
     if (!groups.length) return;
-    container.dataset.mdictEntryTabBound = '1';
 
     // 为每个分组生成 tab 导航
     for (var g = 0; g < groups.length; g++) {
