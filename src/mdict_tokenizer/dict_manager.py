@@ -217,25 +217,214 @@ def json_dumps(payload: dict[str, object] | dict[str, str]) -> str:
     return json.dumps(payload, ensure_ascii=False, indent=2)
 
 
+def _scope_selector(selector: str, prefix: str) -> str:
+    parts: list[str] = []
+    current: list[str] = []
+    paren_depth = 0
+    bracket_depth = 0
+    in_quote = ""
+    escaped = False
+
+    for char in selector:
+        if in_quote:
+            current.append(char)
+            if escaped:
+                escaped = False
+                continue
+            if char == "\\":
+                escaped = True
+                continue
+            if char == in_quote:
+                in_quote = ""
+            continue
+
+        if char in ('"', "'"):
+            in_quote = char
+            current.append(char)
+            continue
+        if char == "(":
+            paren_depth += 1
+            current.append(char)
+            continue
+        if char == ")" and paren_depth > 0:
+            paren_depth -= 1
+            current.append(char)
+            continue
+        if char == "[":
+            bracket_depth += 1
+            current.append(char)
+            continue
+        if char == "]" and bracket_depth > 0:
+            bracket_depth -= 1
+            current.append(char)
+            continue
+
+        if char == "," and paren_depth == 0 and bracket_depth == 0:
+            parts.append("".join(current))
+            current = []
+            continue
+
+        current.append(char)
+
+    parts.append("".join(current))
+
+    scoped_parts: list[str] = []
+    for part in parts:
+        trimmed = part.strip()
+        if not trimmed:
+            continue
+        if trimmed == ":root":
+            scoped_parts.append(prefix)
+            continue
+        if trimmed.startswith(":root"):
+            scoped_parts.append(prefix + trimmed[len(":root") :])
+            continue
+        scoped_parts.append(f"{prefix} {trimmed}")
+
+    return ", ".join(scoped_parts)
+
+
 def scope_css(css_text: str, dict_id: str) -> str:
     """为 CSS 添加作用域"""
     prefix = f".mdict-{dict_id}"
-    scoped_rules: list[str] = []
-    for chunk in css_text.split("}"):
-        if "{" not in chunk:
+    n = len(css_text)
+
+    def find_matching_brace(start_index: int) -> int:
+        depth = 1
+        index = start_index + 1
+        in_quote = ""
+        escaped = False
+
+        while index < n:
+            if css_text[index : index + 2] == "/*":
+                end = css_text.find("*/", index + 2)
+                if end == -1:
+                    return n - 1
+                index = end + 2
+                continue
+
+            char = css_text[index]
+            if in_quote:
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == in_quote:
+                    in_quote = ""
+                index += 1
+                continue
+
+            if char in ('"', "'"):
+                in_quote = char
+            elif char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+                if depth == 0:
+                    return index
+            index += 1
+
+        return n - 1
+
+    result: list[str] = []
+    i = 0
+    while i < n:
+        if css_text[i : i + 2] == "/*":
+            end = css_text.find("*/", i + 2)
+            if end == -1:
+                result.append(css_text[i:])
+                break
+            result.append(css_text[i : end + 2])
+            i = end + 2
             continue
-        selector, body = chunk.split("{", 1)
-        selector = selector.strip()
-        body = body.strip()
+
+        j = i
+        in_quote = ""
+        escaped = False
+        while j < n:
+            if css_text[j : j + 2] == "/*" and not in_quote:
+                break
+
+            char = css_text[j]
+            if in_quote:
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == in_quote:
+                    in_quote = ""
+                j += 1
+                continue
+
+            if char in ('"', "'"):
+                in_quote = char
+                j += 1
+                continue
+
+            if char in ("{", "}", ";"):
+                break
+            j += 1
+
+        token = css_text[i:j]
+        if j >= n:
+            result.append(token)
+            break
+
+        if css_text[j : j + 2] == "/*":
+            result.append(token)
+            i = j
+            continue
+
+        delimiter = css_text[j]
+        if delimiter == ";":
+            result.append(token + ";")
+            i = j + 1
+            continue
+
+        if delimiter == "}":
+            result.append(token + "}")
+            i = j + 1
+            continue
+
+        selector = token.strip()
+        block_end = find_matching_brace(j)
+        body = css_text[j + 1 : block_end]
+        lower_selector = selector.lower()
+
+        is_charset_or_import = lower_selector.startswith(
+            "@charset"
+        ) or lower_selector.startswith("@import")
+        is_font_face = lower_selector.startswith(
+            "@font-face"
+        ) or lower_selector.startswith("@-webkit-font-face")
+        is_keyframes = (
+            lower_selector.startswith("@keyframes")
+            or lower_selector.startswith("@-webkit-keyframes")
+            or lower_selector.startswith("@-moz-keyframes")
+            or lower_selector.startswith("@-o-keyframes")
+        )
+        is_container_at_rule = (
+            lower_selector.startswith("@media")
+            or lower_selector.startswith("@supports")
+            or lower_selector.startswith("@document")
+        )
+
         if not selector:
-            continue
-        if selector.startswith("@"):
-            scoped_rules.append(f"{selector} {{{body}}}")
-            continue
-        selectors = [item.strip() for item in selector.split(",") if item.strip()]
-        scoped = ", ".join(f"{prefix} {item}" for item in selectors)
-        scoped_rules.append(f"{scoped} {{{body}}}")
-    return "\n".join(scoped_rules)
+            result.append("{" + body + "}")
+        elif is_charset_or_import or is_font_face or is_keyframes:
+            result.append(token + "{" + body + "}")
+        elif is_container_at_rule:
+            result.append(token + "{" + scope_css(body, dict_id) + "}")
+        elif selector.startswith("@"):
+            result.append(token + "{" + body + "}")
+        else:
+            scoped_selector = _scope_selector(selector, prefix)
+            if scoped_selector:
+                result.append(scoped_selector + "{" + body + "}")
+
+        i = block_end + 1
+
+    return "".join(result)
 
 
 def extract_mdd_resources(
