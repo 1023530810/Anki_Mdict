@@ -39,6 +39,8 @@ class DictionaryResources:
     has_mdd: bool = False
     resource_count: int = 0
     css_file: str | None = None
+    css_source_files: list[str] = field(default_factory=list)
+    js_files: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -164,6 +166,8 @@ def _to_dict(config: MainConfig) -> dict[str, object]:
                     "hasMdd": dictionary.resources.has_mdd,
                     "resourceCount": dictionary.resources.resource_count,
                     "cssFile": dictionary.resources.css_file,
+                    "cssSourceFiles": dictionary.resources.css_source_files,
+                    "jsFiles": dictionary.resources.js_files,
                 },
                 "filePrefix": dictionary.file_prefix,
             }
@@ -239,6 +243,14 @@ def _from_dict(raw: dict[str, object]) -> MainConfig:
                             if resources.get("cssFile")
                             else None
                         ),
+                        css_source_files=[
+                            str(f) for f in (resources.get('cssSourceFiles') or [])
+                            if isinstance(f, str)
+                        ],
+                        js_files=[
+                            str(f) for f in (resources.get('jsFiles') or [])
+                            if isinstance(f, str)
+                        ],
                     ),
                     file_prefix=str(item.get("filePrefix", "")),
                 )
