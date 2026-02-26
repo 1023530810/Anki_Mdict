@@ -1123,6 +1123,27 @@
    }
 
    /**
+    * 动态加载单个 CSS 文件（去重）
+    * @param {string} cssFile - CSS 文件路径
+    */
+   function loadCss(cssFile) {
+     if (!window.MD._persistent.uiState.cssLoaded) {
+       window.MD._persistent.uiState.cssLoaded = {};
+     }
+     if (window.MD._persistent.uiState.cssLoaded[cssFile]) {
+       return;
+     }
+     window.MD._persistent.uiState.cssLoaded[cssFile] = true;
+     var link = document.createElement('link');
+     link.rel = 'stylesheet';
+     link.href = cssFile;
+     link.onerror = function() {
+       console.warn('[MD] CSS 加载失败:', cssFile);
+     };
+     document.head.appendChild(link);
+   }
+
+   /**
     * 动态加载单个 JS 文件（去重）
     * @param {string} jsFile - JS 文件路径
     */
