@@ -244,19 +244,34 @@
         if (activeLangs.length > 0) {
           var tokenizers = stateConfig.tokenizers || {};
           var allowedIds = {};
+          var hasTokenizerIds = false;
           activeLangs.forEach(function (lang) {
             var langConfig = tokenizers[lang];
-            if (langConfig && langConfig.dictionaryIds) {
+            if (langConfig && langConfig.dictionaryIds && langConfig.dictionaryIds.length) {
+              hasTokenizerIds = true;
               langConfig.dictionaryIds.forEach(function (id) {
                 allowedIds[id] = true;
               });
             }
           });
-          stateConfig = Object.assign({}, stateConfig, {
-            dictionaries: (stateConfig.dictionaries || []).filter(function (dict) {
-              return !!allowedIds[dict.id];
-            })
-          });
+          if (hasTokenizerIds) {
+            // 按 tokenizer 配置的 dictionaryIds 过滤
+            stateConfig = Object.assign({}, stateConfig, {
+              dictionaries: (stateConfig.dictionaries || []).filter(function (dict) {
+                return !!allowedIds[dict.id];
+              })
+            });
+          } else {
+            // dictionaryIds 为空（旧配置或未配置），降级按 dictionary.languages 过滤
+            stateConfig = Object.assign({}, stateConfig, {
+              dictionaries: (stateConfig.dictionaries || []).filter(function (dict) {
+                if (!dict.languages || !dict.languages.length) return true;
+                return dict.languages.some(function (l) {
+                  return activeLangs.indexOf(l) >= 0;
+                });
+              })
+            });
+          }
         }
         window.MD.State = {
           config: stateConfig,

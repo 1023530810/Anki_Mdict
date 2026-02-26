@@ -14,6 +14,7 @@ from .config import (
     Dictionary,
     DictionaryMeta,
     DictionaryResources,
+    ensure_tokenizer_dictionary_ids,
     load_config,
     save_config,
 )
@@ -71,6 +72,9 @@ class DictionaryManager:
         )
 
         config.dictionaries.append(dictionary)
+        config.tokenizers = ensure_tokenizer_dictionary_ids(
+            config.dictionaries, config.tokenizers
+        )
         save_config(self.media_dir, config)
 
         if mdd_paths:
