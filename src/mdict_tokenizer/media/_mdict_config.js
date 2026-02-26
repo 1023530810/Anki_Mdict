@@ -14,7 +14,7 @@
     historyLimit: 50,
     popupHeight: "medium",
     tokenStyle: "underline",
-    enabledDictionaries: [],
+    enabledDictionaries: {},
     enabledFeatures: { search: true, dictSelect: true, dictStatus: true },
   };
 
@@ -27,7 +27,13 @@
     }
     try {
       var parsed = JSON.parse(raw);
-      return Object.assign({}, DEFAULT_CONFIG, parsed || {});
+      var config = Object.assign({}, DEFAULT_CONFIG, parsed || {});
+      // 迁移：旧版 enabledDictionaries 为数组 → 转换为按语言键控的对象
+      if (Array.isArray(config.enabledDictionaries)) {
+        config.enabledDictionaries = {};
+        saveConfig(config);
+      }
+      return config;
     } catch (error) {
       return Object.assign({}, DEFAULT_CONFIG);
     }
@@ -81,6 +87,38 @@
     },
     getAll: function () {
       return loadConfig();
+    },
+
+    /**
+     * 获取指定语言的启用辞典 ID 列表
+     * @param {string} language - 语言代码（如 'ja'、'en'）
+     * @returns {string[]|null} 启用辞典 ID 列表，null 表示未配置（全部启用）
+     */
+    getEnabledForLanguage: function (language) {
+      var config = loadConfig();
+      var ed = config.enabledDictionaries;
+      if (!ed || typeof ed !== "object" || Array.isArray(ed)) return null;
+      var ids = ed[language];
+      if (Array.isArray(ids) && ids.length > 0) return ids;
+      return null;
+    },
+
+    /**
+     * 设置指定语言的启用辞典 ID 列表（不影响其他语言）
+     * @param {string} language - 语言代码
+     * @param {string[]} ids - 启用辞典 ID 列表
+     */
+    setEnabledForLanguage: function (language, ids) {
+      var config = loadConfig();
+      if (
+        !config.enabledDictionaries ||
+        typeof config.enabledDictionaries !== "object" ||
+        Array.isArray(config.enabledDictionaries)
+      ) {
+        config.enabledDictionaries = {};
+      }
+      config.enabledDictionaries[language] = ids;
+      saveConfig(config);
     },
   };
 })();

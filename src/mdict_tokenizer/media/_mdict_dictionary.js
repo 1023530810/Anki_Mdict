@@ -307,11 +307,14 @@
     }
 
     var candidates = getCandidatesByLanguage(config, language);
-    var userConfig = window.MD && window.MD.Config ? window.MD.Config.getAll() : null;
-    if (userConfig && userConfig.enabledDictionaries && userConfig.enabledDictionaries.length) {
-      candidates = candidates.filter(function (dict) {
-        return userConfig.enabledDictionaries.indexOf(dict.id) !== -1;
-      });
+    var userConfig = window.MD && window.MD.Config ? window.MD.Config : null;
+    if (userConfig && userConfig.getEnabledForLanguage && language) {
+      var langEnabled = userConfig.getEnabledForLanguage(language);
+      if (langEnabled !== null) {
+        candidates = candidates.filter(function (dict) {
+          return langEnabled.indexOf(dict.id) !== -1;
+        });
+      }
     }
 
     var searches = candidates.map(function (dict) {
@@ -359,11 +362,14 @@
         );
       }
 
-      var userConfig = window.MD && window.MD.Config ? window.MD.Config.getAll() : null;
-      if (userConfig && userConfig.enabledDictionaries && userConfig.enabledDictionaries.length) {
-        candidates = candidates.filter(function (dict) {
-          return userConfig.enabledDictionaries.indexOf(dict.id) !== -1;
-        });
+      var userConfig = window.MD && window.MD.Config ? window.MD.Config : null;
+      if (userConfig && userConfig.getEnabledForLanguage && language) {
+        var langEnabled = userConfig.getEnabledForLanguage(language);
+        if (langEnabled !== null) {
+          candidates = candidates.filter(function (dict) {
+            return langEnabled.indexOf(dict.id) !== -1;
+          });
+        }
       }
 
       var chain = Promise.resolve({ found: false });

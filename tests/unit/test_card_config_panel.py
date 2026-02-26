@@ -34,7 +34,7 @@ def test_config_panel_labels_present() -> None:
 def test_config_panel_handles_required_keys() -> None:
     content = _read_media_file("_mdict_ui.js")
     required_keys = [
-        "enabledDictionaries",
+        "getEnabledForLanguage",
         "readingMode",
         "extractLemma",
         "clickBehavior",

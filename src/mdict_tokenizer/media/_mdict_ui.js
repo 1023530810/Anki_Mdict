@@ -570,19 +570,33 @@
   }
 
   /**
-   * 获取所有可用字典列表
+   * 获取所有可用字典列表（按语言过滤启用状态）
    * @returns {Array} 字典数组
    */
   function getDictionaries() {
     if (window.MD && window.MD.Dictionary && window.MD.Dictionary.getDictionaries) {
       var dicts = window.MD.Dictionary.getDictionaries() || [];
-      var userConfig = window.MD && window.MD.Config ? window.MD.Config.getAll() : null;
-      if (userConfig && userConfig.enabledDictionaries && userConfig.enabledDictionaries.length) {
-        var enabled = userConfig.enabledDictionaries;
+      if (!window.MD.Config || !window.MD.Config.getEnabledForLanguage) return dicts;
+
+      var languages = (window.MD.State && window.MD.State.initLanguages) || [];
+      var enabledIds = null;
+
+      languages.forEach(function (lang) {
+        var langEnabled = window.MD.Config.getEnabledForLanguage(lang);
+        if (langEnabled !== null) {
+          if (enabledIds === null) enabledIds = {};
+          langEnabled.forEach(function (id) {
+            enabledIds[id] = true;
+          });
+        }
+      });
+
+      if (enabledIds) {
         dicts = dicts.filter(function (dict) {
-          return enabled.indexOf(dict.id) !== -1;
+          return !!enabledIds[dict.id];
         });
       }
+
       return dicts;
     }
     return [];
@@ -1881,12 +1895,28 @@
     wrapper.appendChild(title);
 
     var dicts = window.MD.Dictionary.getDictionaries();
-    var enabled = config.enabledDictionaries && config.enabledDictionaries.length
-      ? config.enabledDictionaries
-      : dicts.map(function (dict) { return dict.id; });
-    if (!config.enabledDictionaries || !config.enabledDictionaries.length) {
-      config.enabledDictionaries = enabled;
-      window.MD.Config.set("enabledDictionaries", enabled);
+    var languages = (window.MD.State && window.MD.State.initLanguages) || [];
+
+    // 按语言读取启用状态
+    var enabledSet = {};
+    var hasPerLanguageConfig = false;
+    languages.forEach(function (lang) {
+      var langEnabled = window.MD.Config.getEnabledForLanguage
+        ? window.MD.Config.getEnabledForLanguage(lang)
+        : null;
+      if (langEnabled !== null) {
+        hasPerLanguageConfig = true;
+        langEnabled.forEach(function (id) {
+          enabledSet[id] = true;
+        });
+      }
+    });
+
+    if (!hasPerLanguageConfig) {
+      // 未配置按语言启用状态 → 默认全部启用
+      dicts.forEach(function (dict) {
+        enabledSet[dict.id] = true;
+      });
     }
 
     dicts.forEach(function (dict) {
@@ -1894,7 +1924,7 @@
       item.className = "md-config-dict-item";
       var checkbox = document.createElement("input");
       checkbox.type = "checkbox";
-      checkbox.checked = enabled.indexOf(dict.id) !== -1;
+      checkbox.checked = !!enabledSet[dict.id];
       checkbox.addEventListener("change", function () {
         var selected = [];
         wrapper.querySelectorAll("input[type=checkbox]").forEach(function (box, index) {
@@ -1902,7 +1932,10 @@
             selected.push(dicts[index].id);
           }
         });
-        window.MD.Config.set("enabledDictionaries", selected);
+        // 按语言保存，不影响其他语言的启用状态
+        languages.forEach(function (lang) {
+          window.MD.Config.setEnabledForLanguage(lang, selected);
+        });
       });
       var label = document.createElement("span");
       label.textContent = dict.name;

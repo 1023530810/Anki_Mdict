@@ -480,14 +480,37 @@
   }
 
   function getEnabledDictionaryIds(allDicts) {
-    var config = window.MD && window.MD.Config ? window.MD.Config.getAll() : null;
-    var enabled = config && config.enabledDictionaries ? config.enabledDictionaries.slice() : [];
-    if (!enabled.length) {
-      enabled = (allDicts || []).map(function (dict) {
+    var config = window.MD && window.MD.Config ? window.MD.Config : null;
+    var languages = (window.MD.State && window.MD.State.initLanguages) || [];
+    var enabledMap = {};
+    var hasAny = false;
+    var i;
+
+    if (config && config.getEnabledForLanguage) {
+      for (i = 0; i < languages.length; i++) {
+        var langEnabled = config.getEnabledForLanguage(languages[i]);
+        if (langEnabled !== null) {
+          hasAny = true;
+          langEnabled.forEach(function (id) {
+            enabledMap[id] = true;
+          });
+        }
+      }
+    }
+
+    if (!hasAny) {
+      return (allDicts || []).map(function (dict) {
         return dict.id;
       });
     }
-    return enabled;
+
+    return (allDicts || [])
+      .filter(function (dict) {
+        return !!enabledMap[dict.id];
+      })
+      .map(function (dict) {
+        return dict.id;
+      });
   }
 
   function fixCssReferences(html, dictionaryId) {
@@ -639,7 +662,7 @@
         historyLimit: 50,
         popupHeight: "medium",
         tokenStyle: "underline",
-        enabledDictionaries: [],
+        enabledDictionaries: {},
       };
 
       CONFIG_SCHEMA = {
@@ -684,9 +707,8 @@
           default: "underline",
         },
         enabledDictionaries: {
-          type: "array",
-          itemType: "string",
-          default: [],
+          type: "object",
+          default: {},
         },
       };
 
@@ -775,7 +797,12 @@
              }
            }
          }
-       }
+       } else if (type === "object") {
+         if (typeof value !== "object" || Array.isArray(value) || value === null) {
+           throw new Error(
+             "Invalid value for " + key + ": expected object, got " + typeof value
+           );
+         }
      }
 
      window.MD.API.version = function () {
