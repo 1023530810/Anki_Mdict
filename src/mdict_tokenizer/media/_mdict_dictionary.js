@@ -377,11 +377,6 @@
       var config = window.MD && window.MD.State ? window.MD.State.config : null;
       return config ? config.dictionaries || [] : [];
     },
-    getCandidatesByLanguage: function (language) {
-      var config = window.MD && window.MD.State ? window.MD.State.config : null;
-      if (!config) return [];
-      return getCandidatesByLanguage(config, language);
-    },
     fuzzySearch: function (word, dictionaryId, options) {
       return fuzzySearch(word, dictionaryId, options);
     },

@@ -413,21 +413,23 @@
     }
   }
 
-  function updateDropdownOptions(dropdownEl, language) {
+  function updateDropdownOptions(dropdownEl) {
     var allDicts;
     var dicts;
     var effectiveIds;
     var i;
     var dict;
     var option;
-    var resolvedLang = language || resolveLookupLanguage(window.MD.UI.currentWord);
 
     if (!dropdownEl) {
       return;
     }
     dropdownEl.innerHTML = '';
 
-    allDicts = getDictionaries(resolvedLang);
+    allDicts = [];
+    if (window.MD && window.MD.Dictionary && window.MD.Dictionary.getDictionaries) {
+      allDicts = window.MD.Dictionary.getDictionaries();
+    }
 
     effectiveIds = window.MD._persistent.uiState.currentEffectiveIds || null;
     if (effectiveIds && effectiveIds.length > 0) {
@@ -571,18 +573,12 @@
   }
 
   /**
-   * 获取可用字典列表（按语言过滤）
-   * @param {string} [language] - 语言代码，传入时按语言过滤，不传返回全部
+   * 获取所有可用字典列表
    * @returns {Array} 字典数组
    */
-  function getDictionaries(language) {
-    if (window.MD && window.MD.Dictionary) {
-      if (language && window.MD.Dictionary.getCandidatesByLanguage) {
-        return window.MD.Dictionary.getCandidatesByLanguage(language) || [];
-      }
-      if (window.MD.Dictionary.getDictionaries) {
-        return window.MD.Dictionary.getDictionaries() || [];
-      }
+  function getDictionaries() {
+    if (window.MD && window.MD.Dictionary && window.MD.Dictionary.getDictionaries) {
+      return window.MD.Dictionary.getDictionaries() || [];
     }
     return [];
   }
@@ -708,7 +704,7 @@
      }
 
      language = resolveLookupLanguage(word);
-     candidateDicts = getDictionaries(language);
+     candidateDicts = getDictionaries();
 
      if (!candidateDicts.length) {
        window.MD._persistent.uiState.currentEffectiveIds = null;
@@ -727,7 +723,7 @@
 
        elements = window.MD.UI.elements;
        if (elements && elements.dictDropdown) {
-         updateDropdownOptions(elements.dictDropdown, language);
+         updateDropdownOptions(elements.dictDropdown);
        }
      });
    }
@@ -764,12 +760,12 @@
       return;
     }
 
-    language = resolveLookupLanguage(word);
-    candidateDicts = getDictionaries(language);
+    candidateDicts = getDictionaries();
     if (!candidateDicts || candidateDicts.length === 0) {
       return;
     }
 
+     language = resolveLookupLanguage(word);
      requestId = ++window.MD._persistent.uiState.hotzoneToggleRequestId;
 
      probeEffectiveDictionaryIds(word, candidateDicts, requestId, language).then(function(effectiveIds) {
@@ -824,12 +820,12 @@
        return;
      }
 
-     language = resolveLookupLanguage(word);
-     candidateDicts = getDictionaries(language);
+     candidateDicts = getDictionaries();
      if (!candidateDicts || candidateDicts.length === 0) {
        return;
      }
 
+     language = resolveLookupLanguage(word);
      requestId = ++window.MD._persistent.uiState.hotzoneToggleRequestId;
 
      probeEffectiveDictionaryIds(word, candidateDicts, requestId, language).then(function(effectiveIds) {
@@ -1625,8 +1621,7 @@
     title.textContent = "启用辞典";
     wrapper.appendChild(title);
 
-    var currentLang = window.MD._persistent.uiState.lastLookupLanguage || null;
-    var dicts = getDictionaries(currentLang);
+    var dicts = window.MD.Dictionary.getDictionaries();
     var enabled = config.enabledDictionaries && config.enabledDictionaries.length
       ? config.enabledDictionaries
       : dicts.map(function (dict) { return dict.id; });
