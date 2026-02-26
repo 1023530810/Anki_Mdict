@@ -1248,6 +1248,107 @@
     });
   }
 
+  /**
+   * 绑定 tab 导航功能（MWU 等字典的 ul.tab + .tab-view 切换）
+   * 结构：
+   *   <ul class="tab"> <li><a href="#mwu_XXX">...</a></li> ... </ul>
+   *   <div class="main"> <div id="mwu_XXX" class="tab-view">...</div> ... </div>
+   * @param {Element} container - 内容容器元素
+   */
+  function bindTabNavigation(container) {
+    if (!container) return;
+    var tabLists = container.querySelectorAll('ul.tab');
+    if (!tabLists.length) return;
+
+    var k, tabList, tabs, tabViews, mainDiv, firstTab, firstId, allViews, j, li, link, href, targetId, targetView;
+
+    for (k = 0; k < tabLists.length; k++) {
+      tabList = tabLists[k];
+      if (tabList.dataset.mdictTabBound === '1') continue;
+      tabList.dataset.mdictTabBound = '1';
+
+      tabs = tabList.querySelectorAll('li');
+      if (tabs.length < 2) continue;
+
+      // 找到同级的 .main 容器下的所有 .tab-view
+      mainDiv = tabList.nextElementSibling;
+      while (mainDiv && !mainDiv.classList.contains('main')) {
+        mainDiv = mainDiv.nextElementSibling;
+      }
+      if (!mainDiv) continue;
+      tabViews = mainDiv.querySelectorAll('.tab-view');
+      if (!tabViews.length) continue;
+
+      // 默认：只显示第一个 tab-view，隐藏其余
+      firstTab = tabs[0];
+      firstId = '';
+      link = firstTab.querySelector('a[href]');
+      if (link) {
+        href = link.getAttribute('href') || '';
+        if (href.charAt(0) === '#') {
+          firstId = href.substring(1);
+        }
+      }
+      firstTab.classList.add('active');
+
+      for (j = 0; j < tabViews.length; j++) {
+        if (j === 0) {
+          tabViews[j].style.display = '';
+        } else {
+          tabViews[j].style.display = 'none';
+        }
+      }
+
+      // 绑定点击事件（闭包保持引用）
+      (function(currentTabList, currentTabs, currentViews) {
+        currentTabList.addEventListener('click', function(e) {
+          var target = e.target;
+          var clickedLink = null;
+          var clickedLi = null;
+          var clickedHref, clickedTargetId, i, view;
+
+          // 向上查找 a 和 li
+          if (target && target.closest) {
+            clickedLink = target.closest('a[href]');
+            clickedLi = target.closest('li');
+          } else {
+            while (target && target !== currentTabList) {
+              if (target.tagName === 'A') clickedLink = target;
+              if (target.tagName === 'LI') clickedLi = target;
+              target = target.parentElement;
+            }
+          }
+
+          if (!clickedLink || !clickedLi) return;
+
+          clickedHref = clickedLink.getAttribute('href') || '';
+          if (clickedHref.charAt(0) !== '#') return;
+
+          e.preventDefault();
+          e.stopPropagation();
+
+          clickedTargetId = clickedHref.substring(1);
+
+          // 更新 tab active 状态
+          for (i = 0; i < currentTabs.length; i++) {
+            currentTabs[i].classList.remove('active');
+          }
+          clickedLi.classList.add('active');
+
+          // 切换 tab-view 显示
+          for (i = 0; i < currentViews.length; i++) {
+            view = currentViews[i];
+            if (view.id === clickedTargetId) {
+              view.style.display = '';
+            } else {
+              view.style.display = 'none';
+            }
+          }
+        });
+      })(tabList, tabs, tabViews);
+    }
+  }
+
   function detectLanguage(word) {
     if (!word) {
       return null;
@@ -1413,6 +1514,7 @@
         executeDictScripts(result.dictionaryId, elements.contentBody);
 
        bindEntryLinks(elements.contentBody, elements.searchInput, elements.dictSelect);
+       bindTabNavigation(elements.contentBody);
 
        if (result.dictionaryId) {
          selectDictionary(result.dictionaryId, result.dictionaryName);
@@ -2131,7 +2233,8 @@
     lookupFromToken: lookupFromToken,
     executeDictScripts: executeDictScripts,
     loadDictStyles: loadDictStyles,
-    loadDictScripts: loadDictScripts
+    loadDictScripts: loadDictScripts,
+    bindTabNavigation: bindTabNavigation
   };
 
   window.MD.History = {

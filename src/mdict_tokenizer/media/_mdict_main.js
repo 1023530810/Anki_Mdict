@@ -567,6 +567,10 @@
     if (window.MD && window.MD.UI && typeof window.MD.UI.executeDictScripts === 'function') {
       window.MD.UI.executeDictScripts(normalized.dictionaryId, container);
     }
+    // 绑定 tab 导航（MWU 等字典的 ul.tab + .tab-view 切换）
+    if (window.MD && window.MD.UI && typeof window.MD.UI.bindTabNavigation === 'function') {
+      window.MD.UI.bindTabNavigation(container);
+    }
   }
 
   function syncDictionarySelect(selectElOrContainer, dictionaryId, dicts, options) {
