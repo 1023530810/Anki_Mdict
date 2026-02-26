@@ -104,11 +104,18 @@ def test_add_mdd_extracts(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
 
     mdd_file = tmp_path / "sample.mdd"
     _ = mdd_file.write_text("dummy", encoding="utf-8")
-    manager.add_mdd_resources("testdict", [mdd_file])
+    manager.add_mdd("testdict", mdd_file)
 
     mapping_file = tmp_path / "_mdict_testdict_resources.json"
     assert mapping_file.exists()
 
+    # 验证 MDD 源文件被跟踪
+    config = load_config(tmp_path)
+    d = config.dictionaries[0]
+    assert len(d.resources.mdd_source_files) == 1
+    assert d.resources.has_mdd is True
+    # MDD 源文件已复制
+    assert (tmp_path / d.resources.mdd_source_files[0]).exists()
 
 def _write_lookup_files(
     base_dir: Path,

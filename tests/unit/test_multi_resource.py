@@ -240,6 +240,124 @@ def test_delete_dictionary_cleans_js(tmp_path: Path) -> None:
     assert not (tmp_path / "_mdict_testdict_script_0.js").exists()
 
 
+
+# =============================================================================
+# MDD 多文件管理测试
+# =============================================================================
+
+
+class _DummyMDD:
+    """模拟 MDD"""
+
+    def __init__(self, path: str) -> None:
+        self.path = path
+
+    def items(self) -> list[tuple[bytes, bytes]]:
+        # 根据文件名生成不同资源
+        from pathlib import Path as P
+        stem = P(self.path).stem
+        return [(f"audio/{stem}.mp3".encode(), b"data_" + stem.encode())]
+
+
+def test_add_two_mdd_files(tmp_path: Path) -> None:
+    """添加两个 MDD 文件并跟踪"""
+    _create_mock_config(tmp_path, "testdict")
+    mgr = DictionaryManager(tmp_path)
+
+    import unittest.mock as mock
+    with mock.patch("mdict_tokenizer.dict_manager._load_mdd_class", return_value=_DummyMDD):
+        mdd1 = tmp_path / "a.mdd"
+        mdd1.write_bytes(b"mdd1")
+        mdd2 = tmp_path / "b.mdd"
+        mdd2.write_bytes(b"mdd2")
+
+        mgr.add_mdd("testdict", mdd1)
+        mgr.add_mdd("testdict", mdd2)
+
+    from mdict_tokenizer.config import load_config
+
+    cfg = load_config(tmp_path)
+    d = cfg.dictionaries[0]
+    assert len(d.resources.mdd_source_files) == 2
+    assert d.resources.has_mdd is True
+    assert d.resources.resource_count == 2
+    # MDD 源文件已复制
+    assert (tmp_path / d.resources.mdd_source_files[0]).exists()
+    assert (tmp_path / d.resources.mdd_source_files[1]).exists()
+    # 资源映射文件存在
+    assert (tmp_path / "_mdict_testdict_resources.json").exists()
+
+
+def test_delete_single_mdd(tmp_path: Path) -> None:
+    """删除单个 MDD 后重建资源"""
+    _create_mock_config(tmp_path, "testdict")
+    mgr = DictionaryManager(tmp_path)
+
+    import unittest.mock as mock
+    with mock.patch("mdict_tokenizer.dict_manager._load_mdd_class", return_value=_DummyMDD):
+        mdd1 = tmp_path / "a.mdd"
+        mdd1.write_bytes(b"mdd1")
+        mdd2 = tmp_path / "b.mdd"
+        mdd2.write_bytes(b"mdd2")
+
+        mgr.add_mdd("testdict", mdd1)
+        mgr.add_mdd("testdict", mdd2)
+
+        # 删除第一个 MDD
+        mgr.delete_mdd("testdict", mdd_index=0)
+
+    from mdict_tokenizer.config import load_config
+
+    cfg = load_config(tmp_path)
+    d = cfg.dictionaries[0]
+    assert len(d.resources.mdd_source_files) == 1
+    assert d.resources.has_mdd is True
+    assert d.resources.resource_count == 1
+
+
+def test_delete_all_mdd(tmp_path: Path) -> None:
+    """删除全部 MDD"""
+    _create_mock_config(tmp_path, "testdict")
+    mgr = DictionaryManager(tmp_path)
+
+    import unittest.mock as mock
+    with mock.patch("mdict_tokenizer.dict_manager._load_mdd_class", return_value=_DummyMDD):
+        mdd1 = tmp_path / "a.mdd"
+        mdd1.write_bytes(b"mdd1")
+        mgr.add_mdd("testdict", mdd1)
+
+    mgr.delete_mdd("testdict")  # 删除全部
+
+    from mdict_tokenizer.config import load_config
+
+    cfg = load_config(tmp_path)
+    d = cfg.dictionaries[0]
+    assert d.resources.mdd_source_files == []
+    assert d.resources.has_mdd is False
+    assert d.resources.resource_count == 0
+    assert not (tmp_path / "_mdict_testdict_resources.json").exists()
+
+
+def test_add_mdd_batch_compat(tmp_path: Path) -> None:
+    """旧接口 add_mdd_resources 仍可用"""
+    _create_mock_config(tmp_path, "testdict")
+    mgr = DictionaryManager(tmp_path)
+
+    import unittest.mock as mock
+    with mock.patch("mdict_tokenizer.dict_manager._load_mdd_class", return_value=_DummyMDD):
+        mdd1 = tmp_path / "a.mdd"
+        mdd1.write_bytes(b"mdd1")
+        mdd2 = tmp_path / "b.mdd"
+        mdd2.write_bytes(b"mdd2")
+
+        mgr.add_mdd_resources("testdict", [mdd1, mdd2])
+
+    from mdict_tokenizer.config import load_config
+
+    cfg = load_config(tmp_path)
+    d = cfg.dictionaries[0]
+    assert len(d.resources.mdd_source_files) == 2
+    assert d.resources.has_mdd is True
 # =============================================================================
 # 配置向后兼容测试
 # =============================================================================
@@ -267,13 +385,15 @@ def test_backward_compat_old_format() -> None:
     assert d.resources.css_file == "old.css"
     assert d.resources.css_source_files == []
     assert d.resources.js_files == []
+    assert d.resources.mdd_source_files == []
 
 
 def test_new_format_round_trip() -> None:
     """新格式 JSON（含 cssSourceFiles + jsFiles）能正确序列化/反序列化"""
     original = DictionaryResources(
-        has_mdd=False,
-        resource_count=0,
+        has_mdd=True,
+        resource_count=5,
+        mdd_source_files=["_mdict_x_mdd_0.mdd", "_mdict_x_mdd_1.mdd"],
         css_file="_mdict_x_style.css",
         css_source_files=["_mdict_x_css_0.css", "_mdict_x_css_1.css"],
         js_files=["_mdict_x_script_0.js"],
@@ -300,18 +420,21 @@ def test_new_format_round_trip() -> None:
         "_mdict_x_css_1.css",
     ]
     assert resources_raw["jsFiles"] == ["_mdict_x_script_0.js"]
+    assert resources_raw["mddSourceFiles"] == ["_mdict_x_mdd_0.mdd", "_mdict_x_mdd_1.mdd"]
 
     cfg2 = _from_dict(raw)
     d2 = cfg2.dictionaries[0]
     assert d2.resources.css_source_files == ["_mdict_x_css_0.css", "_mdict_x_css_1.css"]
     assert d2.resources.js_files == ["_mdict_x_script_0.js"]
 
+    assert d2.resources.mdd_source_files == ["_mdict_x_mdd_0.mdd", "_mdict_x_mdd_1.mdd"]
 
 def test_default_values_no_break_existing_construction() -> None:
     """新字段有默认值，不破坏现有显式构造"""
     r = DictionaryResources(has_mdd=False, resource_count=0, css_file=None)
     assert r.css_source_files == []
     assert r.js_files == []
+    assert r.mdd_source_files == []
 
 
 # =============================================================================
@@ -364,6 +487,7 @@ def _create_mock_config(media_dir: Path, dict_id: str) -> None:
                 "resources": {
                     "hasMdd": False,
                     "resourceCount": 0,
+                    "mddSourceFiles": [],
                     "cssFile": None,
                     "cssSourceFiles": [],
                     "jsFiles": [],

@@ -431,7 +431,13 @@ class DictManagerDialog:
 
     def _build_resource_badge(self, dictionary: Dictionary) -> str:
         """构建资源徽标"""
-        mdd_text = "有" if dictionary.resources.has_mdd else "无"
+        mdd_count = len(dictionary.resources.mdd_source_files)
+        if mdd_count > 0:
+            mdd_text = f"{mdd_count}个"
+        elif dictionary.resources.has_mdd:
+            mdd_text = "有(旧版)"
+        else:
+            mdd_text = "无"
         css_text = "有" if dictionary.resources.css_file else "无"
         return f"MDD:{mdd_text}  CSS:{css_text}  资源:{dictionary.resources.resource_count}"
 
@@ -442,9 +448,7 @@ class DictManagerDialog:
         layout.setContentsMargins(2, 2, 2, 2)
         layout.setSpacing(4)
 
-        mdd_button = self._qt["QPushButton"](
-            "删除MDD" if dictionary.resources.has_mdd else "添加MDD"
-        )
+        mdd_button = self._qt["QPushButton"]("MDD")
         mdd_button.clicked.connect(
             lambda _checked=False, dict_id=dictionary.id: self.on_mdd_action(dict_id)
         )
@@ -587,39 +591,36 @@ class DictManagerDialog:
         self.refresh_languages()
 
     def on_mdd_action(self, dict_id: str) -> None:
-        """处理 MDD 资源"""
+        """处理 MDD 资源（支持多文件）"""
         config = load_config(self.media_dir)
         dictionary = next(
             (item for item in config.dictionaries if item.id == dict_id), None
         )
         if dictionary is None:
             return
-        if dictionary.resources.has_mdd:
+        source_files = dictionary.resources.mdd_source_files
+        if source_files:
+            # 弹出管理对话框
+            self._show_mdd_manage_dialog(dict_id, source_files)
+        elif dictionary.resources.has_mdd:
+            # 旧版 MDD（无源文件跟踪）：提供删除或添加
+            self._show_mdd_legacy_dialog(dict_id)
+        else:
+            # 无 MDD：直接打开文件选择器（支持多选）
+            file_paths, _ = self._qt["QFileDialog"].getOpenFileNames(
+                self._dialog, "选择 MDD 文件", "", "MDD Files (*.mdd)"
+            )
+            if not file_paths:
+                return
             try:
-                self.manager.delete_mdd(dict_id)
-                self._qt["QMessageBox"].information(self._dialog, "完成", "MDD 已删除")
+                for fp in file_paths:
+                    self.manager.add_mdd(dict_id, Path(fp))
+                self._qt["QMessageBox"].information(self._dialog, "完成", f"已添加 {len(file_paths)} 个 MDD 文件")
             except Exception as exc:
                 self._qt["QMessageBox"].warning(
-                    self._dialog, "失败", f"删除失败: {exc}"
+                    self._dialog, "失败", f"MDD 导入失败: {exc}"
                 )
             self.refresh_list()
-            return
-
-        file_paths, _ = self._qt["QFileDialog"].getOpenFileNames(
-            self._dialog, "选择 MDD 文件", "", "MDD Files (*.mdd)"
-        )
-        if not file_paths:
-            return
-        try:
-            self.manager.add_mdd_resources(dict_id, [Path(p) for p in file_paths])
-            self._qt["QMessageBox"].information(
-                self._dialog, "完成", "MDD 资源导入完成"
-            )
-        except Exception as exc:
-            self._qt["QMessageBox"].warning(
-                self._dialog, "失败", f"MDD 导入失败: {exc}"
-            )
-        self.refresh_list()
 
     def on_css_action(self, dict_id: str) -> None:
         """处理 CSS 资源（支持多文件）"""
@@ -728,6 +729,118 @@ class DictManagerDialog:
         except Exception as exc:
             self._qt["QMessageBox"].warning(parent_dlg, "失败", f"删除失败: {exc}")  # type: ignore[arg-type]
 
+    def _show_mdd_manage_dialog(self, dict_id: str, source_files: list[str]) -> None:
+        """弹出 MDD 管理对话框"""
+        QDialog = self._qt["QDialog"]
+        QVBoxLayout = self._qt["QVBoxLayout"]
+        QHBoxLayout = self._qt["QHBoxLayout"]
+        QPushButton = self._qt["QPushButton"]
+        QLabel = self._qt["QLabel"]
+
+        dlg = QDialog(self._dialog)
+        dlg.setWindowTitle("MDD 管理")
+        vbox = QVBoxLayout()
+
+        # 显示已有 MDD 文件列表
+        label = QLabel(f"当前 MDD 文件（共 {len(source_files)} 个）：")
+        vbox.addWidget(label)
+        for i, fname in enumerate(source_files):
+            row = QHBoxLayout()
+            row_label = QLabel(f"  [{i}] {fname}")
+            row.addWidget(row_label)
+            del_btn = QPushButton("删除")
+            idx = i
+            del_btn.clicked.connect(
+                lambda _c=False, _idx=idx: self._do_delete_mdd(dict_id, _idx, dlg)
+            )
+            row.addWidget(del_btn)
+            vbox.addLayout(row)
+
+        # 操作按钮
+        btn_row = QHBoxLayout()
+        add_btn = QPushButton("添加更多 MDD")
+        add_btn.clicked.connect(
+            lambda _c=False: self._do_add_mdd(dict_id, dlg)
+        )
+        del_all_btn = QPushButton("删除全部 MDD")
+        del_all_btn.clicked.connect(
+            lambda _c=False: self._do_delete_all_mdd(dict_id, dlg)
+        )
+        close_btn = QPushButton("关闭")
+        close_btn.clicked.connect(dlg.accept)
+        btn_row.addWidget(add_btn)
+        btn_row.addWidget(del_all_btn)
+        btn_row.addWidget(close_btn)
+        vbox.addLayout(btn_row)
+
+        dlg.setLayout(vbox)
+        dlg.exec()
+        self.refresh_list()
+
+    def _show_mdd_legacy_dialog(self, dict_id: str) -> None:
+        """旧版 MDD 资源管理对话框"""
+        QDialog = self._qt["QDialog"]
+        QVBoxLayout = self._qt["QVBoxLayout"]
+        QHBoxLayout = self._qt["QHBoxLayout"]
+        QPushButton = self._qt["QPushButton"]
+        QLabel = self._qt["QLabel"]
+
+        dlg = QDialog(self._dialog)
+        dlg.setWindowTitle("MDD 管理")
+        vbox = QVBoxLayout()
+
+        label = QLabel("已有旧版 MDD 资源（无源文件跟踪）")
+        vbox.addWidget(label)
+
+        btn_row = QHBoxLayout()
+        del_btn = QPushButton("删除全部 MDD")
+        del_btn.clicked.connect(
+            lambda _c=False: self._do_delete_all_mdd(dict_id, dlg)
+        )
+        add_btn = QPushButton("添加新 MDD")
+        add_btn.clicked.connect(
+            lambda _c=False: self._do_add_mdd(dict_id, dlg)
+        )
+        close_btn = QPushButton("关闭")
+        close_btn.clicked.connect(dlg.accept)
+        btn_row.addWidget(del_btn)
+        btn_row.addWidget(add_btn)
+        btn_row.addWidget(close_btn)
+        vbox.addLayout(btn_row)
+
+        dlg.setLayout(vbox)
+        dlg.exec()
+        self.refresh_list()
+
+    def _do_add_mdd(self, dict_id: str, parent_dlg: object) -> None:
+        """添加 MDD 文件"""
+        file_paths, _ = self._qt["QFileDialog"].getOpenFileNames(
+            parent_dlg, "选择 MDD 文件", "", "MDD Files (*.mdd)"  # type: ignore[arg-type]
+        )
+        if not file_paths:
+            return
+        try:
+            for fp in file_paths:
+                self.manager.add_mdd(dict_id, Path(fp))
+            self._qt["QMessageBox"].information(parent_dlg, "完成", f"已添加 {len(file_paths)} 个 MDD")  # type: ignore[arg-type]
+        except Exception as exc:
+            self._qt["QMessageBox"].warning(parent_dlg, "失败", f"添加失败: {exc}")  # type: ignore[arg-type]
+
+    def _do_delete_mdd(self, dict_id: str, mdd_index: int, parent_dlg: object) -> None:
+        """删除单个 MDD 文件"""
+        try:
+            self.manager.delete_mdd(dict_id, mdd_index=mdd_index)
+            self._qt["QMessageBox"].information(parent_dlg, "完成", "MDD 已删除")  # type: ignore[arg-type]
+        except Exception as exc:
+            self._qt["QMessageBox"].warning(parent_dlg, "失败", f"删除失败: {exc}")  # type: ignore[arg-type]
+
+    def _do_delete_all_mdd(self, dict_id: str, parent_dlg: object) -> None:
+        """删除全部 MDD 文件"""
+        try:
+            self.manager.delete_mdd(dict_id)
+            self._qt["QMessageBox"].information(parent_dlg, "完成", "全部 MDD 已删除")  # type: ignore[arg-type]
+        except Exception as exc:
+            self._qt["QMessageBox"].warning(parent_dlg, "失败", f"删除失败: {exc}")  # type: ignore[arg-type]
     def on_js_action(self, dict_id: str) -> None:
         """处理 JS 资源"""
         config = load_config(self.media_dir)

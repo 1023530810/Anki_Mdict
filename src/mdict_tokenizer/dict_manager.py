@@ -74,37 +74,96 @@ class DictionaryManager:
         save_config(self.media_dir, config)
 
         if mdd_paths:
-            self.add_mdd_resources(dict_id, mdd_paths)
+            for mdd_path in mdd_paths:
+                self.add_mdd(dict_id, mdd_path)
         if css_path:
             self.add_css(dict_id, css_path)
 
         return dictionary
 
     def add_mdd_resources(self, dict_id: str, mdd_paths: list[Path]) -> None:
-        """添加 MDD 资源"""
-        mapping, total = extract_mdd_resources(dict_id, mdd_paths, self.media_dir)
-        resource_file = self.media_dir / f"_mdict_{dict_id}_resources.json"
-        _ = resource_file.write_text(
-            json_dumps(mapping),
-            encoding="utf-8",
-        )
+        """批量添加 MDD 资源（兼容旧接口）"""
+        for mdd_path in mdd_paths:
+            self.add_mdd(dict_id, mdd_path)
 
+    def add_mdd(self, dict_id: str, mdd_path: Path) -> None:
+        """添加 MDD 文件（支持多文件）"""
         config = load_config(self.media_dir)
         for index, dictionary in enumerate(config.dictionaries):
             if dictionary.id != dict_id:
                 continue
+            n = len(dictionary.resources.mdd_source_files)
+            # 复制源文件
+            source_filename = f"_mdict_{dict_id}_mdd_{n}.mdd"
+            dest_path = self.media_dir / source_filename
+            _ = dest_path.write_bytes(mdd_path.read_bytes())
+            # 更新 mdd_source_files
+            new_source_files = list(dictionary.resources.mdd_source_files) + [
+                source_filename
+            ]
             config.dictionaries[index] = replace(
                 dictionary,
                 resources=DictionaryResources(
                     has_mdd=True,
-                    resource_count=total,
+                    resource_count=dictionary.resources.resource_count,
+                    mdd_source_files=new_source_files,
                     css_file=dictionary.resources.css_file,
                     css_source_files=dictionary.resources.css_source_files,
                     js_files=dictionary.resources.js_files,
                 ),
             )
+            save_config(self.media_dir, config)
+            # 重建所有 MDD 资源
+            self._rebuild_mdd_resources(dict_id)
             break
-        save_config(self.media_dir, config)
+
+    def _rebuild_mdd_resources(self, dict_id: str) -> None:
+        """重新提取所有 MDD 源文件的资源"""
+        config = load_config(self.media_dir)
+        for index, dictionary in enumerate(config.dictionaries):
+            if dictionary.id != dict_id:
+                continue
+            source_files = dictionary.resources.mdd_source_files
+            # 删除旧资源文件
+            for path in self.media_dir.glob(f"_mdict_{dict_id}_res_*"):
+                path.unlink(missing_ok=True)
+            resource_file = self.media_dir / f"_mdict_{dict_id}_resources.json"
+            if not source_files:
+                # 没有源文件：清除
+                resource_file.unlink(missing_ok=True)
+                config.dictionaries[index] = replace(
+                    dictionary,
+                    resources=DictionaryResources(
+                        has_mdd=False,
+                        resource_count=0,
+                        mdd_source_files=[],
+                        css_file=dictionary.resources.css_file,
+                        css_source_files=dictionary.resources.css_source_files,
+                        js_files=dictionary.resources.js_files,
+                    ),
+                )
+                save_config(self.media_dir, config)
+                return
+            # 从所有 MDD 源文件提取资源
+            mdd_paths = [self.media_dir / f for f in source_files]
+            mapping, total = extract_mdd_resources(dict_id, mdd_paths, self.media_dir)
+            _ = resource_file.write_text(
+                json_dumps(mapping),
+                encoding="utf-8",
+            )
+            config.dictionaries[index] = replace(
+                dictionary,
+                resources=DictionaryResources(
+                    has_mdd=True,
+                    resource_count=total,
+                    mdd_source_files=source_files,
+                    css_file=dictionary.resources.css_file,
+                    css_source_files=dictionary.resources.css_source_files,
+                    js_files=dictionary.resources.js_files,
+                ),
+            )
+            save_config(self.media_dir, config)
+            return
 
     def add_css(self, dict_id: str, css_path: Path) -> None:
         """添加 CSS 样式（支持多文件）"""
@@ -129,6 +188,7 @@ class DictionaryManager:
                 resources=DictionaryResources(
                     has_mdd=dictionary.resources.has_mdd,
                     resource_count=dictionary.resources.resource_count,
+                    mdd_source_files=dictionary.resources.mdd_source_files,
                     css_file=dictionary.resources.css_file,
                     css_source_files=new_source_files,
                     js_files=dictionary.resources.js_files,
@@ -155,6 +215,7 @@ class DictionaryManager:
                     resources=DictionaryResources(
                         has_mdd=dictionary.resources.has_mdd,
                         resource_count=dictionary.resources.resource_count,
+                        mdd_source_files=dictionary.resources.mdd_source_files,
                         css_file=None,
                         css_source_files=[],
                         js_files=dictionary.resources.js_files,
@@ -177,6 +238,7 @@ class DictionaryManager:
                 resources=DictionaryResources(
                     has_mdd=dictionary.resources.has_mdd,
                     resource_count=dictionary.resources.resource_count,
+                    mdd_source_files=dictionary.resources.mdd_source_files,
                     css_file=output_path.name,
                     css_source_files=source_files,
                     js_files=dictionary.resources.js_files,
@@ -215,29 +277,43 @@ class DictionaryManager:
         config.tokenizers = updated_tokenizers
         save_config(self.media_dir, config)
 
-    def delete_mdd(self, dict_id: str) -> None:
-        """删除 MDD 资源"""
-        for path in self.media_dir.glob(f"_mdict_{dict_id}_res_*"):
-            path.unlink(missing_ok=True)
-        mapping_file = self.media_dir / f"_mdict_{dict_id}_resources.json"
-        mapping_file.unlink(missing_ok=True)
-
+    def delete_mdd(self, dict_id: str, mdd_index: int | None = None) -> None:
+        """删除 MDD（支持删除单个或全部）"""
         config = load_config(self.media_dir)
         for index, dictionary in enumerate(config.dictionaries):
             if dictionary.id != dict_id:
                 continue
+            source_files = list(dictionary.resources.mdd_source_files)
+            if mdd_index is not None and 0 <= mdd_index < len(source_files):
+                # 删除指定索引的 MDD 源文件
+                filename = source_files[mdd_index]
+                (self.media_dir / filename).unlink(missing_ok=True)
+                source_files.pop(mdd_index)
+            else:
+                # 删除所有 MDD 源文件和资源
+                for filename in source_files:
+                    (self.media_dir / filename).unlink(missing_ok=True)
+                source_files = []
+                for path in self.media_dir.glob(f"_mdict_{dict_id}_res_*"):
+                    path.unlink(missing_ok=True)
+                resource_file = self.media_dir / f"_mdict_{dict_id}_resources.json"
+                resource_file.unlink(missing_ok=True)
             config.dictionaries[index] = replace(
                 dictionary,
                 resources=DictionaryResources(
-                    has_mdd=False,
+                    has_mdd=bool(source_files),
                     resource_count=0,
+                    mdd_source_files=source_files,
                     css_file=dictionary.resources.css_file,
                     css_source_files=dictionary.resources.css_source_files,
                     js_files=dictionary.resources.js_files,
                 ),
             )
+            save_config(self.media_dir, config)
+            # 如果还有源文件，重新提取资源
+            if source_files:
+                self._rebuild_mdd_resources(dict_id)
             break
-        save_config(self.media_dir, config)
 
     def delete_css(self, dict_id: str, css_index: int | None = None) -> None:
         """删除 CSS（支持删除单个或全部）"""
@@ -264,6 +340,7 @@ class DictionaryManager:
                 resources=DictionaryResources(
                     has_mdd=dictionary.resources.has_mdd,
                     resource_count=dictionary.resources.resource_count,
+                    mdd_source_files=dictionary.resources.mdd_source_files,
                     css_file=None,
                     css_source_files=source_files,
                     js_files=dictionary.resources.js_files,
@@ -291,6 +368,7 @@ class DictionaryManager:
                 resources=DictionaryResources(
                     has_mdd=dictionary.resources.has_mdd,
                     resource_count=dictionary.resources.resource_count,
+                    mdd_source_files=dictionary.resources.mdd_source_files,
                     css_file=dictionary.resources.css_file,
                     css_source_files=dictionary.resources.css_source_files,
                     js_files=new_js_files,
@@ -319,6 +397,7 @@ class DictionaryManager:
                 resources=DictionaryResources(
                     has_mdd=dictionary.resources.has_mdd,
                     resource_count=dictionary.resources.resource_count,
+                    mdd_source_files=dictionary.resources.mdd_source_files,
                     css_file=dictionary.resources.css_file,
                     css_source_files=dictionary.resources.css_source_files,
                     js_files=js_files,
