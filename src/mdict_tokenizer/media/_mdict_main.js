@@ -521,7 +521,10 @@
     var html = fixCssReferences(normalized.contentHtml || "", normalized.dictionaryId);
     var fullHtml = prefixHtml ? prefixHtml + html : html;
     container.innerHTML = "<div class=\"mdict-" + normalized.dictionaryId + "\">" + fullHtml + "</div>";
-  }
+    // 在渲染后执行辞典内嵌入的脚本标签
+    if (window.MD && window.MD.UI && typeof window.MD.UI.executeDictScripts === 'function') {
+      window.MD.UI.executeDictScripts(normalized.dictionaryId, container);
+    }
 
   function syncDictionarySelect(selectElOrContainer, dictionaryId, dicts, options) {
     if (!selectElOrContainer) {

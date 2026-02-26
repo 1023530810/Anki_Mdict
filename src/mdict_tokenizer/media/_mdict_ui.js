@@ -1107,31 +1107,64 @@
    }
 
    /**
-    * 动态加载单个 CSS 文件
-    * @param {string} cssFile - CSS 文件路径
+    * 动态加载所有字典的 JS 文件（与 loadDictStyles 对称）
     */
-   function loadCss(cssFile) {
-     var link;
-     
-     if (!window.MD._persistent.uiState.cssLoaded) {
-       window.MD._persistent.uiState.cssLoaded = {};
-     }
-     
-     if (window.MD._persistent.uiState.cssLoaded[cssFile]) {
+   function loadDictScripts() {
+     if (!window.MD.State || !window.MD.State.config || !window.MD.State.config.dictionaries) {
        return;
      }
-     
-     window.MD._persistent.uiState.cssLoaded[cssFile] = true;
-     
-     link = document.createElement('link');
-     link.rel = 'stylesheet';
-     link.href = cssFile;
-     link.onerror = function() {
-       console.warn('[MD] CSS 加载失败:', cssFile);
-     };
-     document.head.appendChild(link);
+     window.MD.State.config.dictionaries.forEach(function(dict) {
+       if (dict.resources && dict.resources.jsFiles && dict.resources.jsFiles.length) {
+         dict.resources.jsFiles.forEach(function(jsFile) {
+           loadScript(jsFile);
+         });
+       }
+     });
    }
 
+   /**
+    * 动态加载单个 JS 文件（去重）
+    * @param {string} jsFile - JS 文件路径
+    */
+   function loadScript(jsFile) {
+     if (!window.MD._persistent.uiState.scriptsLoaded) {
+       window.MD._persistent.uiState.scriptsLoaded = {};
+     }
+     if (window.MD._persistent.uiState.scriptsLoaded[jsFile]) {
+       return;
+     }
+     window.MD._persistent.uiState.scriptsLoaded[jsFile] = true;
+     var script = document.createElement('script');
+     script.src = jsFile;
+     script.onerror = function() {
+       console.warn('[MD] JS 加载失败:', jsFile);
+     };
+     document.head.appendChild(script);
+   }
+
+   /**
+    * 在 lookup 结果渲染到 DOM 后，重新执行结果中的 script 标签
+    * @param {string} dictionaryId - 当前辞典 ID
+    * @param {Element} container - 结果容器元素
+    */
+   function executeDictScripts(dictionaryId, container) {
+     if (!container) {
+       return;
+     }
+     var scripts = container.querySelectorAll('script');
+     scripts.forEach(function(oldScript) {
+       var newScript = document.createElement('script');
+       if (oldScript.src) {
+         newScript.src = oldScript.src;
+       } else {
+         newScript.textContent = oldScript.textContent;
+       }
+       if (oldScript.type) {
+         newScript.type = oldScript.type;
+       }
+       oldScript.parentNode.replaceChild(newScript, oldScript);
+     });
+   }
    function bindEntryLinks(container, input, dictSwitch) {
     if (!container || container.dataset.mdictEntryBound === "1") {
       return;
@@ -1321,6 +1354,9 @@
         fullHtml = prefixHtml ? prefixHtml + html : html;
         elements.contentBody.innerHTML = "<div class=\"mdict-" + result.dictionaryId + "\">" + fullHtml + "</div>";
         elements.contentBody.scrollTop = 0;
+        loadDictStyles();
+        loadDictScripts();
+        executeDictScripts(result.dictionaryId, elements.contentBody);
 
        bindEntryLinks(elements.contentBody, elements.searchInput, elements.dictSelect);
 
@@ -2038,7 +2074,10 @@
     hidePopup: hidePopup,
     showConfig: showConfig,
     showHistory: showHistory,
-    lookupFromToken: lookupFromToken
+    lookupFromToken: lookupFromToken,
+    executeDictScripts: executeDictScripts,
+    loadDictStyles: loadDictStyles,
+    loadDictScripts: loadDictScripts
   };
 
   window.MD.History = {

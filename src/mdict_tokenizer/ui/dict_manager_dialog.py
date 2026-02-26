@@ -449,9 +449,7 @@ class DictManagerDialog:
             lambda _checked=False, dict_id=dictionary.id: self.on_mdd_action(dict_id)
         )
 
-        css_button = self._qt["QPushButton"](
-            "删除CSS" if dictionary.resources.css_file else "添加CSS"
-        )
+        css_button = self._qt["QPushButton"]("CSS")
         css_button.clicked.connect(
             lambda _checked=False, dict_id=dictionary.id: self.on_css_action(dict_id)
         )
@@ -473,12 +471,18 @@ class DictManagerDialog:
             )
         )
 
-        for btn in [mdd_button, css_button, rename_button, delete_button, lang_button]:
+        js_button = self._qt["QPushButton"]("JS")
+        js_button.clicked.connect(
+            lambda _checked=False, dict_id=dictionary.id: self.on_js_action(dict_id)
+        )
+
+        for btn in [mdd_button, css_button, js_button, rename_button, delete_button, lang_button]:
             btn.setMinimumWidth(50)
             btn.setMaximumWidth(70)
 
         layout.addWidget(mdd_button)
         layout.addWidget(css_button)
+        layout.addWidget(js_button)
         layout.addWidget(rename_button)
         layout.addWidget(delete_button)
         layout.addWidget(lang_button)
@@ -618,37 +622,201 @@ class DictManagerDialog:
         self.refresh_list()
 
     def on_css_action(self, dict_id: str) -> None:
-        """处理 CSS 资源"""
+        """处理 CSS 资源（支持多文件）"""
         config = load_config(self.media_dir)
         dictionary = next(
             (item for item in config.dictionaries if item.id == dict_id), None
         )
         if dictionary is None:
             return
-        if dictionary.resources.css_file:
+        source_files = dictionary.resources.css_source_files
+        if source_files:
+            # 弹出管理对话框
+            self._show_css_manage_dialog(dict_id, source_files)
+        else:
+            # 无 CSS：直接打开文件选择器（支持多选）
+            file_paths, _ = self._qt["QFileDialog"].getOpenFileNames(
+                self._dialog, "选择 CSS 文件", "", "CSS Files (*.css)"
+            )
+            if not file_paths:
+                return
             try:
-                self.manager.delete_css(dict_id)
-                self._qt["QMessageBox"].information(self._dialog, "完成", "CSS 已删除")
+                for fp in file_paths:
+                    self.manager.add_css(dict_id, Path(fp))
+                self._qt["QMessageBox"].information(self._dialog, "完成", f"已添加 {len(file_paths)} 个 CSS 文件")
             except Exception as exc:
                 self._qt["QMessageBox"].warning(
-                    self._dialog, "失败", f"删除失败: {exc}"
+                    self._dialog, "失败", f"CSS 处理失败: {exc}"
                 )
             self.refresh_list()
-            return
 
-        file_path, _ = self._qt["QFileDialog"].getOpenFileName(
-            self._dialog, "选择 CSS 文件", "", "CSS Files (*.css)"
+    def _show_css_manage_dialog(self, dict_id: str, source_files: list[str]) -> None:
+        """弹出 CSS 管理对话框"""
+        QDialog = self._qt["QDialog"]
+        QVBoxLayout = self._qt["QVBoxLayout"]
+        QHBoxLayout = self._qt["QHBoxLayout"]
+        QPushButton = self._qt["QPushButton"]
+        QLabel = self._qt["QLabel"]
+
+        dlg = QDialog(self._dialog)
+        dlg.setWindowTitle("CSS 管理")
+        vbox = QVBoxLayout()
+
+        # 显示已有 CSS 文件列表
+        label = QLabel(f"当前 CSS 文件（共 {len(source_files)} 个）：")
+        vbox.addWidget(label)
+        for i, fname in enumerate(source_files):
+            row = QHBoxLayout()
+            row_label = QLabel(f"  [{i}] {fname}")
+            row.addWidget(row_label)
+            del_btn = QPushButton("删除")
+            idx = i  # 捕获循环变量
+            del_btn.clicked.connect(
+                lambda _c=False, _idx=idx: self._do_delete_css(dict_id, _idx, dlg)
+            )
+            row.addWidget(del_btn)
+            vbox.addLayout(row)
+
+        # 操作按钮
+        btn_row = QHBoxLayout()
+        add_btn = QPushButton("添加更多 CSS")
+        add_btn.clicked.connect(
+            lambda _c=False: self._do_add_css(dict_id, dlg)
         )
-        if not file_path:
+        del_all_btn = QPushButton("删除全部 CSS")
+        del_all_btn.clicked.connect(
+            lambda _c=False: self._do_delete_all_css(dict_id, dlg)
+        )
+        close_btn = QPushButton("关闭")
+        close_btn.clicked.connect(dlg.accept)
+        btn_row.addWidget(add_btn)
+        btn_row.addWidget(del_all_btn)
+        btn_row.addWidget(close_btn)
+        vbox.addLayout(btn_row)
+
+        dlg.setLayout(vbox)
+        dlg.exec()
+        self.refresh_list()
+
+    def _do_add_css(self, dict_id: str, parent_dlg: object) -> None:
+        """添加 CSS 文件"""
+        file_paths, _ = self._qt["QFileDialog"].getOpenFileNames(
+            parent_dlg, "选择 CSS 文件", "", "CSS Files (*.css)"  # type: ignore[arg-type]
+        )
+        if not file_paths:
             return
         try:
-            self.manager.add_css(dict_id, Path(file_path))
-            self._qt["QMessageBox"].information(self._dialog, "完成", "CSS 已应用")
+            for fp in file_paths:
+                self.manager.add_css(dict_id, Path(fp))
+            self._qt["QMessageBox"].information(parent_dlg, "完成", f"已添加 {len(file_paths)} 个 CSS")  # type: ignore[arg-type]
         except Exception as exc:
-            self._qt["QMessageBox"].warning(
-                self._dialog, "失败", f"CSS 处理失败: {exc}"
+            self._qt["QMessageBox"].warning(parent_dlg, "失败", f"添加失败: {exc}")  # type: ignore[arg-type]
+
+    def _do_delete_css(self, dict_id: str, css_index: int, parent_dlg: object) -> None:
+        """删除单个 CSS 文件"""
+        try:
+            self.manager.delete_css(dict_id, css_index=css_index)
+            self._qt["QMessageBox"].information(parent_dlg, "完成", "CSS 已删除")  # type: ignore[arg-type]
+        except Exception as exc:
+            self._qt["QMessageBox"].warning(parent_dlg, "失败", f"删除失败: {exc}")  # type: ignore[arg-type]
+
+    def _do_delete_all_css(self, dict_id: str, parent_dlg: object) -> None:
+        """删除全部 CSS 文件"""
+        try:
+            self.manager.delete_css(dict_id)
+            self._qt["QMessageBox"].information(parent_dlg, "完成", "全部 CSS 已删除")  # type: ignore[arg-type]
+        except Exception as exc:
+            self._qt["QMessageBox"].warning(parent_dlg, "失败", f"删除失败: {exc}")  # type: ignore[arg-type]
+
+    def on_js_action(self, dict_id: str) -> None:
+        """处理 JS 资源"""
+        config = load_config(self.media_dir)
+        dictionary = next(
+            (item for item in config.dictionaries if item.id == dict_id), None
+        )
+        if dictionary is None:
+            return
+        js_files = dictionary.resources.js_files
+        if js_files:
+            self._show_js_manage_dialog(dict_id, js_files)
+        else:
+            file_paths, _ = self._qt["QFileDialog"].getOpenFileNames(
+                self._dialog, "选择 JS 文件", "", "JS Files (*.js)"
             )
+            if not file_paths:
+                return
+            try:
+                for fp in file_paths:
+                    self.manager.add_js(dict_id, Path(fp))
+                self._qt["QMessageBox"].information(self._dialog, "完成", f"已添加 {len(file_paths)} 个 JS 文件")
+            except Exception as exc:
+                self._qt["QMessageBox"].warning(
+                    self._dialog, "失败", f"JS 处理失败: {exc}"
+                )
+            self.refresh_list()
+
+    def _show_js_manage_dialog(self, dict_id: str, js_files: list[str]) -> None:
+        """弹出 JS 管理对话框"""
+        QDialog = self._qt["QDialog"]
+        QVBoxLayout = self._qt["QVBoxLayout"]
+        QHBoxLayout = self._qt["QHBoxLayout"]
+        QPushButton = self._qt["QPushButton"]
+        QLabel = self._qt["QLabel"]
+
+        dlg = QDialog(self._dialog)
+        dlg.setWindowTitle("JS 管理")
+        vbox = QVBoxLayout()
+
+        label = QLabel(f"当前 JS 文件（共 {len(js_files)} 个）：")
+        vbox.addWidget(label)
+        for i, fname in enumerate(js_files):
+            row = QHBoxLayout()
+            row_label = QLabel(f"  [{i}] {fname}")
+            row.addWidget(row_label)
+            del_btn = QPushButton("删除")
+            idx = i
+            del_btn.clicked.connect(
+                lambda _c=False, _idx=idx: self._do_delete_js(dict_id, _idx, dlg)
+            )
+            row.addWidget(del_btn)
+            vbox.addLayout(row)
+
+        btn_row = QHBoxLayout()
+        add_btn = QPushButton("添加更多 JS")
+        add_btn.clicked.connect(
+            lambda _c=False: self._do_add_js(dict_id, dlg)
+        )
+        close_btn = QPushButton("关闭")
+        close_btn.clicked.connect(dlg.accept)
+        btn_row.addWidget(add_btn)
+        btn_row.addWidget(close_btn)
+        vbox.addLayout(btn_row)
+
+        dlg.setLayout(vbox)
+        dlg.exec()
         self.refresh_list()
+
+    def _do_add_js(self, dict_id: str, parent_dlg: object) -> None:
+        """添加 JS 文件"""
+        file_paths, _ = self._qt["QFileDialog"].getOpenFileNames(
+            parent_dlg, "选择 JS 文件", "", "JS Files (*.js)"  # type: ignore[arg-type]
+        )
+        if not file_paths:
+            return
+        try:
+            for fp in file_paths:
+                self.manager.add_js(dict_id, Path(fp))
+            self._qt["QMessageBox"].information(parent_dlg, "完成", f"已添加 {len(file_paths)} 个 JS")  # type: ignore[arg-type]
+        except Exception as exc:
+            self._qt["QMessageBox"].warning(parent_dlg, "失败", f"添加失败: {exc}")  # type: ignore[arg-type]
+
+    def _do_delete_js(self, dict_id: str, js_index: int, parent_dlg: object) -> None:
+        """删除单个 JS 文件"""
+        try:
+            self.manager.delete_js(dict_id, js_index=js_index)
+            self._qt["QMessageBox"].information(parent_dlg, "完成", "JS 已删除")  # type: ignore[arg-type]
+        except Exception as exc:
+            self._qt["QMessageBox"].warning(parent_dlg, "失败", f"删除失败: {exc}")  # type: ignore[arg-type]
 
     def on_toggle_enabled(self, dict_id: str, enabled: bool) -> None:
         """切换启用状态"""
