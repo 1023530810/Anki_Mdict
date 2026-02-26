@@ -426,10 +426,7 @@
     }
     dropdownEl.innerHTML = '';
 
-    allDicts = [];
-    if (window.MD && window.MD.Dictionary && window.MD.Dictionary.getDictionaries) {
-      allDicts = window.MD.Dictionary.getDictionaries();
-    }
+    allDicts = getDictionaries();
 
     effectiveIds = window.MD._persistent.uiState.currentEffectiveIds || null;
     if (effectiveIds && effectiveIds.length > 0) {
@@ -578,7 +575,15 @@
    */
   function getDictionaries() {
     if (window.MD && window.MD.Dictionary && window.MD.Dictionary.getDictionaries) {
-      return window.MD.Dictionary.getDictionaries() || [];
+      var dicts = window.MD.Dictionary.getDictionaries() || [];
+      var userConfig = window.MD && window.MD.Config ? window.MD.Config.getAll() : null;
+      if (userConfig && userConfig.enabledDictionaries && userConfig.enabledDictionaries.length) {
+        var enabled = userConfig.enabledDictionaries;
+        dicts = dicts.filter(function (dict) {
+          return enabled.indexOf(dict.id) !== -1;
+        });
+      }
+      return dicts;
     }
     return [];
   }

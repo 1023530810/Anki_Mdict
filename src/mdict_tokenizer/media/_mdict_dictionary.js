@@ -390,7 +390,10 @@
     },
     getDictionaries: function () {
       var config = window.MD && window.MD.State ? window.MD.State.config : null;
-      return config ? config.dictionaries || [] : [];
+      if (!config || !config.dictionaries) return [];
+      return config.dictionaries.slice().sort(function (a, b) {
+        return (a.order || 0) - (b.order || 0);
+      });
     },
     fuzzySearch: function (word, dictionaryId, options) {
       return fuzzySearch(word, dictionaryId, options);
