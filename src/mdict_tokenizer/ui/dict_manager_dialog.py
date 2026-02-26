@@ -1031,6 +1031,15 @@ class DictManagerDialog:
                     dictionary_ids=ordered_ids,
                 )
             config.tokenizers[language] = tokenizer
+
+        # 同步更新 dictionary.order 字段
+        order_map = {dict_id: index for index, dict_id in enumerate(ordered_ids)}
+        updated: list[Dictionary] = []
+        for dictionary in config.dictionaries:
+            order = order_map.get(dictionary.id, dictionary.order)
+            updated.append(replace(dictionary, order=order))
+        config.dictionaries = sorted(updated, key=lambda item: item.order)
+
         save_config(self.media_dir, config)
 
         self._staged_rows_by_language.pop(language, None)

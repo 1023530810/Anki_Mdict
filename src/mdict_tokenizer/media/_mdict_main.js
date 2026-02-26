@@ -205,25 +205,14 @@
 
      var configPromise;
      var cachedConfig = window.MD._persistent.configCache;
-     if (cachedConfig) {
-       configPromise = fetchJson(configPath)
-         .then(function (freshConfig) {
-           if (freshConfig && freshConfig.version && cachedConfig.version && freshConfig.version === cachedConfig.version) {
-             window.MD._persistent.stats.configCacheHitCount++;
-             return cachedConfig;
-           }
-           window.MD._persistent.configCache = freshConfig || {};
-           return window.MD._persistent.configCache;
-         })
-        .catch(function () {
-          return cachedConfig;
-        });
-    } else {
-      configPromise = fetchJson(configPath).then(function (config) {
-        window.MD._persistent.configCache = config || {};
-        return window.MD._persistent.configCache;
-      });
-    }
+     configPromise = fetchJson(configPath)
+       .then(function (freshConfig) {
+         window.MD._persistent.configCache = freshConfig || {};
+         return window.MD._persistent.configCache;
+       })
+       .catch(function () {
+         return cachedConfig || {};
+       });
 
     return configPromise
       .then(function (config) {
