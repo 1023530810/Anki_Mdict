@@ -1093,7 +1093,13 @@
      } catch (error) {
        word = String(word);
      }
-     return word.trim();
+     word = word.trim();
+     // 处理大辞泉格式：entry://いっちょういったん【一長一短】 → 提取【】内的词条
+     var bracketMatch = word.match(/【(.+?)】/);
+     if (bracketMatch) {
+       word = bracketMatch[1];
+     }
+     return word;
    }
 
    /**
