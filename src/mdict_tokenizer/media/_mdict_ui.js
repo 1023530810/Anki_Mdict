@@ -1109,18 +1109,32 @@
    /**
     * 动态加载所有字典的 JS 文件（与 loadDictStyles 对称）
     */
-   function loadDictScripts() {
-     if (!window.MD.State || !window.MD.State.config || !window.MD.State.config.dictionaries) {
-       return;
-     }
-     window.MD.State.config.dictionaries.forEach(function(dict) {
-       if (dict.resources && dict.resources.jsFiles && dict.resources.jsFiles.length) {
-         dict.resources.jsFiles.forEach(function(jsFile) {
-           loadScript(jsFile);
-         });
-       }
-     });
-   }
+  function loadDictScripts(callback) {
+    if (!window.MD.State || !window.MD.State.config || !window.MD.State.config.dictionaries) {
+      if (callback) callback();
+      return;
+    }
+    var pending = 0;
+    var done = false;
+    var checkDone = function() {
+      pending--;
+      if (pending <= 0 && !done) {
+        done = true;
+        if (callback) callback();
+      }
+    };
+    window.MD.State.config.dictionaries.forEach(function(dict) {
+      if (dict.resources && dict.resources.jsFiles && dict.resources.jsFiles.length) {
+        dict.resources.jsFiles.forEach(function(jsFile) {
+          pending++;
+          loadScript(jsFile, checkDone);
+        });
+      }
+    });
+    if (pending === 0 && callback) {
+      callback();
+    }
+  }
 
    /**
     * 动态加载单个 CSS 文件（去重）
@@ -1147,21 +1161,26 @@
     * 动态加载单个 JS 文件（去重）
     * @param {string} jsFile - JS 文件路径
     */
-   function loadScript(jsFile) {
-     if (!window.MD._persistent.uiState.scriptsLoaded) {
-       window.MD._persistent.uiState.scriptsLoaded = {};
-     }
-     if (window.MD._persistent.uiState.scriptsLoaded[jsFile]) {
-       return;
-     }
-     window.MD._persistent.uiState.scriptsLoaded[jsFile] = true;
-     var script = document.createElement('script');
-     script.src = jsFile;
-     script.onerror = function() {
-       console.warn('[MD] JS 加载失败:', jsFile);
-     };
-     document.head.appendChild(script);
-   }
+  function loadScript(jsFile, onLoad) {
+    if (!window.MD._persistent.uiState.scriptsLoaded) {
+      window.MD._persistent.uiState.scriptsLoaded = {};
+    }
+    if (window.MD._persistent.uiState.scriptsLoaded[jsFile]) {
+      if (onLoad) onLoad();
+      return;
+    }
+    window.MD._persistent.uiState.scriptsLoaded[jsFile] = true;
+    var script = document.createElement('script');
+    script.src = jsFile;
+    script.onload = function() {
+      if (onLoad) onLoad();
+    };
+    script.onerror = function() {
+      console.warn('[MD] JS 加载失败:', jsFile);
+      if (onLoad) onLoad();
+    };
+    document.head.appendChild(script);
+  }
 
    /**
     * 在 lookup 结果渲染到 DOM 后，重新执行结果中的 script 标签
@@ -1376,7 +1395,15 @@
         elements.contentBody.innerHTML = "<div class=\"mdict-" + result.dictionaryId + "\">" + fullHtml + "</div>";
         elements.contentBody.scrollTop = 0;
         loadDictStyles();
-        loadDictScripts();
+        loadDictScripts(function() {
+          try {
+            document.dispatchEvent(new Event('DOMContentLoaded'));
+          } catch(e) {
+            var evt = document.createEvent('Event');
+            evt.initEvent('DOMContentLoaded', true, true);
+            document.dispatchEvent(evt);
+          }
+        });
         executeDictScripts(result.dictionaryId, elements.contentBody);
 
        bindEntryLinks(elements.contentBody, elements.searchInput, elements.dictSelect);
