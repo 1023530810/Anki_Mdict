@@ -803,6 +803,7 @@
              "Invalid value for " + key + ": expected object, got " + typeof value
            );
          }
+       }
      }
 
      window.MD.API.version = function () {
