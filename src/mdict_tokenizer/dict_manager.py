@@ -284,73 +284,6 @@ def _scope_selector(selector: str, prefix: str) -> str:
     return ", ".join(scoped_parts)
 
 
-def _scope_selector(selector: str, prefix: str) -> str:
-    parts: list[str] = []
-    current: list[str] = []
-    paren_depth = 0
-    bracket_depth = 0
-    in_quote = ""
-    escaped = False
-
-    for char in selector:
-        if in_quote:
-            current.append(char)
-            if escaped:
-                escaped = False
-                continue
-            if char == "\":
-                escaped = True
-                continue
-            if char == in_quote:
-                in_quote = ""
-            continue
-
-        if char in ('"', "'"):
-            in_quote = char
-            current.append(char)
-            continue
-        if char == "(":
-            paren_depth += 1
-            current.append(char)
-            continue
-        if char == ")" and paren_depth > 0:
-            paren_depth -= 1
-            current.append(char)
-            continue
-        if char == "[":
-            bracket_depth += 1
-            current.append(char)
-            continue
-        if char == "]" and bracket_depth > 0:
-            bracket_depth -= 1
-            current.append(char)
-            continue
-
-        if char == "," and paren_depth == 0 and bracket_depth == 0:
-            parts.append("".join(current))
-            current = []
-            continue
-
-        current.append(char)
-
-    parts.append("".join(current))
-
-    scoped_parts: list[str] = []
-    for part in parts:
-        trimmed = part.strip()
-        if not trimmed:
-            continue
-        if trimmed == ":root":
-            scoped_parts.append(prefix)
-            continue
-        if trimmed.startswith(":root"):
-            scoped_parts.append(prefix + trimmed[len(":root") :])
-            continue
-        scoped_parts.append(f"{prefix} {trimmed}")
-
-    return ", ".join(scoped_parts)
-
-
 def scope_css(css_text: str, dict_id: str) -> str:
     """为 CSS 添加作用域"""
     prefix = f".mdict-{dict_id}"
@@ -474,6 +407,8 @@ def scope_css(css_text: str, dict_id: str) -> str:
             lower_selector.startswith("@media")
             or lower_selector.startswith("@supports")
             or lower_selector.startswith("@document")
+            or lower_selector.startswith("@layer")
+            or lower_selector.startswith("@container")
         )
 
         if not selector:
