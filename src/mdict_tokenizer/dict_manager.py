@@ -402,6 +402,7 @@ def scope_css(css_text: str, dict_id: str) -> str:
             or lower_selector.startswith("@-webkit-keyframes")
             or lower_selector.startswith("@-moz-keyframes")
             or lower_selector.startswith("@-o-keyframes")
+            or lower_selector.startswith("@-ms-keyframes")
         )
         is_container_at_rule = (
             lower_selector.startswith("@media")
@@ -409,6 +410,7 @@ def scope_css(css_text: str, dict_id: str) -> str:
             or lower_selector.startswith("@document")
             or lower_selector.startswith("@layer")
             or lower_selector.startswith("@container")
+            or lower_selector.startswith("@scope")
         )
 
         if not selector:
