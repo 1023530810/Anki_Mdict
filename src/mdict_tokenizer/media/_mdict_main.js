@@ -228,19 +228,10 @@
     return configPromise
       .then(function (config) {
         // 根据注入语言过滤辞典列表，下游代码只能看到对应语言的辞典
-        // 优先从 DOM data-mdict-lang 属性获取语言（最可靠），回退到 getInitLanguages
-        var domFields = document.querySelectorAll('.mdict-field[data-mdict-lang]');
-        var langMap = {};
+        // 使用 getInitLanguages 根据当前牌组名（从 DOM 读取）动态解析语言
+        // 不从 data-mdict-lang 读取，因为模板注入的静态值可能与当前牌组语言不符
         var stateConfig = config || {};
-        var di;
-        for (di = 0; di < domFields.length; di++) {
-          var lang = domFields[di].getAttribute('data-mdict-lang');
-          if (lang) langMap[lang] = true;
-        }
-        var activeLangs = Object.keys(langMap);
-        if (!activeLangs.length) {
-          activeLangs = getInitLanguages(stateConfig);
-        }
+        var activeLangs = getInitLanguages(stateConfig);
         if (activeLangs.length > 0) {
           var tokenizers = stateConfig.tokenizers || {};
           var allowedIds = {};
