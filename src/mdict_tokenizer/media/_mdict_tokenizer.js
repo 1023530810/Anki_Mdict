@@ -196,22 +196,49 @@
   function tokenizeEnglish(text) {
     return initEnglish().then(function (nlp) {
       var terms = nlp(text).terms().data();
-      return terms.map(function (term) {
+      var result = [];
+      terms.forEach(function (term) {
         var lemma = term.normal || term.text;
         if (term.root) {
           lemma = term.root;
+        }
+        var surface = term.text;
+        var trailing = "";
+        // Strip trailing punctuation from token
+        if (surface && surface.length > 1) {
+          var lastChar = surface[surface.length - 1];
+          if (!/[a-zA-Z]/.test(lastChar)) {
+            trailing = lastChar;
+            surface = surface.slice(0, -1);
+          }
+        }
+        // Also strip trailing punctuation from lemma for accurate lookup
+        if (lemma && lemma.length > 1) {
+          var lastLemmaChar = lemma[lemma.length - 1];
+          if (!/[a-zA-Z]/.test(lastLemmaChar)) {
+            lemma = lemma.slice(0, -1);
+          }
         }
         var ipa = "";
         if (cmuCache && cmuCache[lemma.toUpperCase()]) {
           ipa = arpabetToIpa(cmuCache[lemma.toUpperCase()]);
         }
-        return {
-          surface: term.text,
+        result.push({
+          surface: surface,
           lemma: lemma,
           pos: term.tags && term.tags.length ? term.tags[0] : "",
           ipa: ipa,
-        };
+        });
+        if (trailing) {
+          result.push({
+            surface: trailing,
+            lemma: trailing,
+            pos: "",
+            ipa: "",
+          });
+        }
       });
+      return result;
     });
   }
 
