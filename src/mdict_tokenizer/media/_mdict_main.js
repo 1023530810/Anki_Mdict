@@ -1029,4 +1029,11 @@
      return window.MD._persistent.stats || {};
    };
    ensureApiFacade();
+
+   // 自动初始化：当脚本异步加载时，内联脚本可能先于 main.js 执行，
+   // 导致 init() 调用被跳过。此处检测 MDICT_FIELDS 是否已设置，
+   // 若已设置且尚未初始化，则自动触发 init()。
+   if (window.MDICT_FIELDS && !window.MD._persistent.initPromise && !window.MD.State) {
+     window.MD.init({ autoTokenize: true });
+   }
 })();
