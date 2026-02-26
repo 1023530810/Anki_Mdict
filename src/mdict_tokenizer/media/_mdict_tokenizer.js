@@ -195,48 +195,41 @@
 
   function tokenizeEnglish(text) {
     return initEnglish().then(function (nlp) {
-      var terms = nlp(text).terms().data();
+      var doc = nlp(text);
+      doc.compute('root');
+      var sentences = doc.json();
       var result = [];
-      terms.forEach(function (term) {
-        var lemma = term.normal || term.text;
-        if (term.root) {
-          lemma = term.root;
-        }
-        var surface = term.text;
-        var trailing = "";
-        // Strip trailing punctuation from token
-        if (surface && surface.length > 1) {
-          var lastChar = surface[surface.length - 1];
-          if (!/[a-zA-Z]/.test(lastChar)) {
-            trailing = lastChar;
-            surface = surface.slice(0, -1);
+      sentences.forEach(function (sentence) {
+        sentence.terms.forEach(function (term) {
+          // Pre-text (leading whitespace/punctuation)
+          if (term.pre) {
+            result.push({ surface: term.pre, lemma: term.pre, pos: "", ipa: "" });
           }
-        }
-        // Also strip trailing punctuation from lemma for accurate lookup
-        if (lemma && lemma.length > 1) {
-          var lastLemmaChar = lemma[lemma.length - 1];
-          if (!/[a-zA-Z]/.test(lastLemmaChar)) {
-            lemma = lemma.slice(0, -1);
+          var surface = term.text;
+          // Skip empty terms (e.g. from contraction splitting like "don't" → "do" + "")
+          if (!surface) {
+            if (term.post) {
+              result.push({ surface: term.post, lemma: term.post, pos: "", ipa: "" });
+            }
+            return;
           }
-        }
-        var ipa = "";
-        if (cmuCache && cmuCache[lemma.toUpperCase()]) {
-          ipa = arpabetToIpa(cmuCache[lemma.toUpperCase()]);
-        }
-        result.push({
-          surface: surface,
-          lemma: lemma,
-          pos: term.tags && term.tags.length ? term.tags[0] : "",
-          ipa: ipa,
-        });
-        if (trailing) {
+          var lemma = term.root || term.normal || surface;
+          var ipa = "";
+          if (cmuCache && cmuCache[lemma.toUpperCase()]) {
+            ipa = arpabetToIpa(cmuCache[lemma.toUpperCase()]);
+          }
+          var tags = term.tags;
           result.push({
-            surface: trailing,
-            lemma: trailing,
-            pos: "",
-            ipa: "",
+            surface: surface,
+            lemma: lemma,
+            pos: tags && tags.length ? tags[0] : "",
+            ipa: ipa,
           });
-        }
+          // Post-text (trailing whitespace/punctuation)
+          if (term.post) {
+            result.push({ surface: term.post, lemma: term.post, pos: "", ipa: "" });
+          }
+        });
       });
       return result;
     });
