@@ -227,8 +227,28 @@
 
     return configPromise
       .then(function (config) {
+        // 根据注入语言过滤辞典列表，下游代码只能看到对应语言的辞典
+        var initLangs = getInitLanguages(config || {});
+        var stateConfig = config || {};
+        if (initLangs.length > 0) {
+          var tokenizers = stateConfig.tokenizers || {};
+          var allowedIds = {};
+          initLangs.forEach(function (lang) {
+            var langConfig = tokenizers[lang];
+            if (langConfig && langConfig.dictionaryIds) {
+              langConfig.dictionaryIds.forEach(function (id) {
+                allowedIds[id] = true;
+              });
+            }
+          });
+          stateConfig = Object.assign({}, stateConfig, {
+            dictionaries: (stateConfig.dictionaries || []).filter(function (dict) {
+              return !!allowedIds[dict.id];
+            })
+          });
+        }
         window.MD.State = {
-          config: config || {},
+          config: stateConfig,
           targetContainer: targetContainer,
         };
         return initTokenizers(config).catch(function () {
