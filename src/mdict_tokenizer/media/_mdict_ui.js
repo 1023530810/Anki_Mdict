@@ -1351,72 +1351,102 @@
 
   /**
    * 为多义项词条（OALDAE 等字典的 div.entry[hm] 结构）动态生成 tab 导航。
-   * 结构：
-   *   <div class="oldae" id="entryContent">
-   *     <div class="entry" hm="1" id="light1">...</div>
-   *     <div class="entry" hm="2" id="light2">...</div>
+   * 实际结构（每个 entry 有独立的 .oldae 包裹）：
+   *   <div class="mdict-xxx">
+   *     <div class="oldae"><div class="entry" hm="1">...</div></div>
+   *     <div class="oldae"><div class="entry" hm="2">...</div></div>
    *   </div>
    * @param {Element} container - 内容容器元素
    */
   function bindEntryTabs(container) {
     if (!container) return;
+    if (container.dataset.mdictEntryTabBound === '1') return;
 
-    // 查找所有拥有 hm 属性的 entry 容器（.oldae > .entry[hm] 等）
-    var wrappers = container.querySelectorAll('.oldae, .oald, .ldoce, .entry-wrapper');
-    if (!wrappers.length) {
-      // 如果没有已知包裹容器，尝试在 container 自身中直接查找
-      processEntryGroup(container);
-      return;
+    // 找到所有带 hm 属性的 entry 元素
+    var allEntries = container.querySelectorAll('.entry[hm]');
+    if (allEntries.length < 2) return;
+
+    // 为每个 entry 确定其「切换单元」：.oldae 父元素或 entry 本身
+    var units = [];
+    var i, entry, parent;
+    for (i = 0; i < allEntries.length; i++) {
+      entry = allEntries[i];
+      parent = entry.parentElement;
+      if (parent && (
+        parent.classList.contains('oldae') ||
+        parent.classList.contains('oald') ||
+        parent.classList.contains('ldoce') ||
+        parent.id === 'entryContent'
+      )) {
+        units.push({ wrapper: parent, entry: entry });
+      } else {
+        units.push({ wrapper: entry, entry: entry });
+      }
     }
-    for (var w = 0; w < wrappers.length; w++) {
-      processEntryGroup(wrappers[w]);
+
+    // 按 DOM 位置分组：收集连续相邻的 wrapper
+    var groups = [];
+    var currentGroup = [units[0]];
+    for (i = 1; i < units.length; i++) {
+      // 检查当前 wrapper 是否与上一个 wrapper 相邻（同一个父节点下的兄弟）
+      var prev = currentGroup[currentGroup.length - 1].wrapper;
+      var curr = units[i].wrapper;
+      if (prev.parentElement === curr.parentElement) {
+        currentGroup.push(units[i]);
+      } else {
+        if (currentGroup.length >= 2) groups.push(currentGroup);
+        currentGroup = [units[i]];
+      }
+    }
+    if (currentGroup.length >= 2) groups.push(currentGroup);
+
+    if (!groups.length) return;
+    container.dataset.mdictEntryTabBound = '1';
+
+    // 为每个分组生成 tab 导航
+    for (var g = 0; g < groups.length; g++) {
+      buildTabsForGroup(groups[g]);
     }
   }
 
   /**
-   * 处理一组 entry[hm] 元素，为其生成 tab 导航
-   * @param {Element} group - 包含 entry 元素的容器
+   * 为一组相邻的 entry 构建 tab 导航栏
+   * @param {Array} group - [{ wrapper, entry }]
    */
-  function processEntryGroup(group) {
-    if (!group || group.dataset.mdictEntryTabBound === '1') return;
-
-    var entries = group.querySelectorAll(':scope > .entry[hm]');
-    if (entries.length < 2) return;
-
-    group.dataset.mdictEntryTabBound = '1';
-
-    // 构建 tab 导航
+  function buildTabsForGroup(group) {
     var ul = document.createElement('ul');
     ul.className = 'tab';
-    ul.dataset.mdictTabBound = '1'; // 防止 bindTabNavigation 重复处理
+    ul.dataset.mdictTabBound = '1';
 
-    var i, entry, hm, h2, pos, headword, posText, li, a, spanEntry, spanPos;
+    var i, unit, entry, hm, h2, hmSpan, headword, pos, posText;
+    var li, a, spanEntry, spanPos;
+    var wrappers = [];
 
-    for (i = 0; i < entries.length; i++) {
-      entry = entries[i];
+    for (i = 0; i < group.length; i++) {
+      unit = group[i];
+      entry = unit.entry;
       hm = entry.getAttribute('hm') || (i + 1);
 
       // 提取词头：h2.h 的文本（去掉 .hm span）
       h2 = entry.querySelector('h2.h');
+      headword = '';
       if (h2) {
-        var hmSpan = h2.querySelector('.hm');
+        hmSpan = h2.querySelector('.hm');
         headword = h2.textContent || '';
         if (hmSpan) {
           headword = headword.replace(hmSpan.textContent, '').trim();
         }
-      } else {
-        headword = '';
       }
 
-      // 提取词性：.webtop-g > .pos 或 .pos-g > .pos
-      pos = entry.querySelector('.webtop-g > .pos') || entry.querySelector('.pos-g .pos');
+      // 提取词性
+      pos = entry.querySelector('.webtop-g > .pos') || entry.querySelector('.pos-g .pos') || entry.querySelector('.pos');
       posText = pos ? pos.textContent.trim() : '';
 
       li = document.createElement('li');
       if (i === 0) li.className = 'active';
 
       a = document.createElement('a');
-      a.href = '#' + (entry.id || 'entry_' + hm);
+      a.href = '#' + (entry.id || 'entry_hm_' + hm);
 
       if (headword) {
         spanEntry = document.createElement('span');
@@ -1424,14 +1454,12 @@
         spanEntry.textContent = headword;
         a.appendChild(spanEntry);
       }
-
       if (posText) {
         spanPos = document.createElement('span');
         spanPos.className = 'word-class';
         spanPos.textContent = '(' + posText + ')';
         a.appendChild(spanPos);
       }
-
       if (!headword && !posText) {
         a.textContent = hm;
       }
@@ -1439,19 +1467,22 @@
       li.appendChild(a);
       ul.appendChild(li);
 
+      wrappers.push(unit.wrapper);
+
       // 默认只显示第一个
       if (i === 0) {
-        entry.style.display = '';
+        unit.wrapper.style.display = '';
       } else {
-        entry.style.display = 'none';
+        unit.wrapper.style.display = 'none';
       }
     }
 
-    // 插入 tab 到第一个 entry 之前
-    group.insertBefore(ul, entries[0]);
+    // 插入 tab 栏到第一个 wrapper 之前
+    var firstWrapper = wrappers[0];
+    firstWrapper.parentElement.insertBefore(ul, firstWrapper);
 
-    // 绑定点击切换（闭包）
-    (function(tabUl, tabEntries) {
+    // 绑定点击事件
+    (function(tabUl, tabWrappers, tabEntries) {
       tabUl.addEventListener('click', function(e) {
         var target = e.target;
         var clickedLink = null;
@@ -1485,16 +1516,16 @@
         }
         clickedLi.classList.add('active');
 
-        // 切换 entry 显示
+        // 切换 wrapper 显示（通过 entry.id 匹配）
         for (var k = 0; k < tabEntries.length; k++) {
           if (tabEntries[k].id === clickedTargetId) {
-            tabEntries[k].style.display = '';
+            tabWrappers[k].style.display = '';
           } else {
-            tabEntries[k].style.display = 'none';
+            tabWrappers[k].style.display = 'none';
           }
         }
       });
-    })(ul, entries);
+    })(ul, wrappers, group.map(function(u) { return u.entry; }));
   }
 
   function detectLanguage(word) {
