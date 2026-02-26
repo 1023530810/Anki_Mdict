@@ -472,6 +472,39 @@ def _load_mdd_class() -> Any | None:
         return None
 
     package_name = "_mdict_query_temp"
+
+    # 先注册虚假包，供相对导入使用
+    import types
+    pkg = types.ModuleType(package_name)
+    pkg.__path__ = [str(mdict_query_root)]  # type: ignore[assignment]
+    pkg.__package__ = package_name
+    sys.modules[package_name] = pkg
+
+    # 预加载 ripemd128 依赖
+    ripemd128_path = mdict_query_root / "ripemd128.py"
+    if ripemd128_path.exists():
+        ripemd128_spec = importlib.util.spec_from_file_location(
+            f"{package_name}.ripemd128", ripemd128_path
+        )
+        if ripemd128_spec and ripemd128_spec.loader:
+            ripemd128_mod = importlib.util.module_from_spec(ripemd128_spec)
+            ripemd128_mod.__package__ = package_name
+            sys.modules[f"{package_name}.ripemd128"] = ripemd128_mod
+            ripemd128_spec.loader.exec_module(ripemd128_mod)  # type: ignore[union-attr]
+
+    # 预加载 pureSalsa20 依赖
+    salsa20_path = mdict_query_root / "pureSalsa20.py"
+    if salsa20_path.exists():
+        salsa20_spec = importlib.util.spec_from_file_location(
+            f"{package_name}.pureSalsa20", salsa20_path
+        )
+        if salsa20_spec and salsa20_spec.loader:
+            salsa20_mod = importlib.util.module_from_spec(salsa20_spec)
+            salsa20_mod.__package__ = package_name
+            sys.modules[f"{package_name}.pureSalsa20"] = salsa20_mod
+            salsa20_spec.loader.exec_module(salsa20_mod)  # type: ignore[union-attr]
+
+    # 加载 readmdict（依赖上面两个模块的相对导入）
     spec = importlib.util.spec_from_file_location(
         f"{package_name}.readmdict", readmdict_path
     )
@@ -479,6 +512,7 @@ def _load_mdd_class() -> Any | None:
         return None
 
     module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
+    module.__package__ = package_name
+    sys.modules[f"{package_name}.readmdict"] = module
+    spec.loader.exec_module(module)  # type: ignore[union-attr]
     return getattr(module, "MDD", None)
