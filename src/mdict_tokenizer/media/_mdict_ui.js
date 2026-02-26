@@ -722,8 +722,7 @@
 
        window.MD._persistent.uiState.currentEffectiveIds = effectiveIds;
 
-       container = document.querySelector('.md-panel-dict-select-wrapper');
-       displayId = container ? container.dataset.selectedId : null;
+       displayId = window.MD.UI.currentDictId || null;
        updateCounter(effectiveIds, displayId);
 
        elements = window.MD.UI.elements;
