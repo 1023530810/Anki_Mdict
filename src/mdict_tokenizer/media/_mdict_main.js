@@ -525,6 +525,7 @@
     if (window.MD && window.MD.UI && typeof window.MD.UI.executeDictScripts === 'function') {
       window.MD.UI.executeDictScripts(normalized.dictionaryId, container);
     }
+  }
 
   function syncDictionarySelect(selectElOrContainer, dictionaryId, dicts, options) {
     if (!selectElOrContainer) {
