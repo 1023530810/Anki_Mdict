@@ -1349,6 +1349,154 @@
     }
   }
 
+  /**
+   * 为多义项词条（OALDAE 等字典的 div.entry[hm] 结构）动态生成 tab 导航。
+   * 结构：
+   *   <div class="oldae" id="entryContent">
+   *     <div class="entry" hm="1" id="light1">...</div>
+   *     <div class="entry" hm="2" id="light2">...</div>
+   *   </div>
+   * @param {Element} container - 内容容器元素
+   */
+  function bindEntryTabs(container) {
+    if (!container) return;
+
+    // 查找所有拥有 hm 属性的 entry 容器（.oldae > .entry[hm] 等）
+    var wrappers = container.querySelectorAll('.oldae, .oald, .ldoce, .entry-wrapper');
+    if (!wrappers.length) {
+      // 如果没有已知包裹容器，尝试在 container 自身中直接查找
+      processEntryGroup(container);
+      return;
+    }
+    for (var w = 0; w < wrappers.length; w++) {
+      processEntryGroup(wrappers[w]);
+    }
+  }
+
+  /**
+   * 处理一组 entry[hm] 元素，为其生成 tab 导航
+   * @param {Element} group - 包含 entry 元素的容器
+   */
+  function processEntryGroup(group) {
+    if (!group || group.dataset.mdictEntryTabBound === '1') return;
+
+    var entries = group.querySelectorAll(':scope > .entry[hm]');
+    if (entries.length < 2) return;
+
+    group.dataset.mdictEntryTabBound = '1';
+
+    // 构建 tab 导航
+    var ul = document.createElement('ul');
+    ul.className = 'tab';
+    ul.dataset.mdictTabBound = '1'; // 防止 bindTabNavigation 重复处理
+
+    var i, entry, hm, h2, pos, headword, posText, li, a, spanEntry, spanPos;
+
+    for (i = 0; i < entries.length; i++) {
+      entry = entries[i];
+      hm = entry.getAttribute('hm') || (i + 1);
+
+      // 提取词头：h2.h 的文本（去掉 .hm span）
+      h2 = entry.querySelector('h2.h');
+      if (h2) {
+        var hmSpan = h2.querySelector('.hm');
+        headword = h2.textContent || '';
+        if (hmSpan) {
+          headword = headword.replace(hmSpan.textContent, '').trim();
+        }
+      } else {
+        headword = '';
+      }
+
+      // 提取词性：.webtop-g > .pos 或 .pos-g > .pos
+      pos = entry.querySelector('.webtop-g > .pos') || entry.querySelector('.pos-g .pos');
+      posText = pos ? pos.textContent.trim() : '';
+
+      li = document.createElement('li');
+      if (i === 0) li.className = 'active';
+
+      a = document.createElement('a');
+      a.href = '#' + (entry.id || 'entry_' + hm);
+
+      if (headword) {
+        spanEntry = document.createElement('span');
+        spanEntry.className = 'entry-text';
+        spanEntry.textContent = headword;
+        a.appendChild(spanEntry);
+      }
+
+      if (posText) {
+        spanPos = document.createElement('span');
+        spanPos.className = 'word-class';
+        spanPos.textContent = '(' + posText + ')';
+        a.appendChild(spanPos);
+      }
+
+      if (!headword && !posText) {
+        a.textContent = hm;
+      }
+
+      li.appendChild(a);
+      ul.appendChild(li);
+
+      // 默认只显示第一个
+      if (i === 0) {
+        entry.style.display = '';
+      } else {
+        entry.style.display = 'none';
+      }
+    }
+
+    // 插入 tab 到第一个 entry 之前
+    group.insertBefore(ul, entries[0]);
+
+    // 绑定点击切换（闭包）
+    (function(tabUl, tabEntries) {
+      tabUl.addEventListener('click', function(e) {
+        var target = e.target;
+        var clickedLink = null;
+        var clickedLi = null;
+
+        if (target && target.closest) {
+          clickedLink = target.closest('a[href]');
+          clickedLi = target.closest('li');
+        } else {
+          while (target && target !== tabUl) {
+            if (target.tagName === 'A') clickedLink = target;
+            if (target.tagName === 'LI') clickedLi = target;
+            target = target.parentElement;
+          }
+        }
+
+        if (!clickedLink || !clickedLi) return;
+
+        var clickedHref = clickedLink.getAttribute('href') || '';
+        if (clickedHref.charAt(0) !== '#') return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        var clickedTargetId = clickedHref.substring(1);
+
+        // 更新 active 状态
+        var lis = tabUl.querySelectorAll('li');
+        for (var j = 0; j < lis.length; j++) {
+          lis[j].classList.remove('active');
+        }
+        clickedLi.classList.add('active');
+
+        // 切换 entry 显示
+        for (var k = 0; k < tabEntries.length; k++) {
+          if (tabEntries[k].id === clickedTargetId) {
+            tabEntries[k].style.display = '';
+          } else {
+            tabEntries[k].style.display = 'none';
+          }
+        }
+      });
+    })(ul, entries);
+  }
+
   function detectLanguage(word) {
     if (!word) {
       return null;
@@ -1515,6 +1663,7 @@
 
        bindEntryLinks(elements.contentBody, elements.searchInput, elements.dictSelect);
        bindTabNavigation(elements.contentBody);
+       bindEntryTabs(elements.contentBody);
 
        if (result.dictionaryId) {
          selectDictionary(result.dictionaryId, result.dictionaryName);
@@ -2234,7 +2383,8 @@
     executeDictScripts: executeDictScripts,
     loadDictStyles: loadDictStyles,
     loadDictScripts: loadDictScripts,
-    bindTabNavigation: bindTabNavigation
+    bindTabNavigation: bindTabNavigation,
+    bindEntryTabs: bindEntryTabs
   };
 
   window.MD.History = {

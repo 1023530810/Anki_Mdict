@@ -571,6 +571,10 @@
     if (window.MD && window.MD.UI && typeof window.MD.UI.bindTabNavigation === 'function') {
       window.MD.UI.bindTabNavigation(container);
     }
+    // 为多义项词条动态生成 tab 导航（OALDAE 等字典的 div.entry[hm] 结构）
+    if (window.MD && window.MD.UI && typeof window.MD.UI.bindEntryTabs === 'function') {
+      window.MD.UI.bindEntryTabs(container);
+    }
   }
 
   function syncDictionarySelect(selectElOrContainer, dictionaryId, dicts, options) {
