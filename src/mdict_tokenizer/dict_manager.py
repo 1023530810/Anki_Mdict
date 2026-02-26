@@ -99,32 +99,91 @@ class DictionaryManager:
                     has_mdd=True,
                     resource_count=total,
                     css_file=dictionary.resources.css_file,
+                    css_source_files=dictionary.resources.css_source_files,
+                    js_files=dictionary.resources.js_files,
                 ),
             )
             break
         save_config(self.media_dir, config)
 
     def add_css(self, dict_id: str, css_path: Path) -> None:
-        """添加 CSS 样式"""
-        css_text = css_path.read_text(encoding="utf-8")
-        scoped = scope_css(css_text, dict_id)
-        output_path = self.media_dir / f"_mdict_{dict_id}_style.css"
-        _ = output_path.write_text(scoped, encoding="utf-8")
+        """添加 CSS 样式（支持多文件）"""
+        # 检测编码并读取 CSS 内容
+        css_text = _read_css_file(css_path)
 
         config = load_config(self.media_dir)
         for index, dictionary in enumerate(config.dictionaries):
             if dictionary.id != dict_id:
                 continue
+            n = len(dictionary.resources.css_source_files)
+            # 复制源文件
+            source_filename = f"_mdict_{dict_id}_css_{n}.css"
+            source_path = self.media_dir / source_filename
+            _ = source_path.write_text(css_text, encoding="utf-8")
+            # 更新 css_source_files
+            new_source_files = list(dictionary.resources.css_source_files) + [
+                source_filename
+            ]
+            config.dictionaries[index] = replace(
+                dictionary,
+                resources=DictionaryResources(
+                    has_mdd=dictionary.resources.has_mdd,
+                    resource_count=dictionary.resources.resource_count,
+                    css_file=dictionary.resources.css_file,
+                    css_source_files=new_source_files,
+                    js_files=dictionary.resources.js_files,
+                ),
+            )
+            save_config(self.media_dir, config)
+            # 合并所有 CSS
+            self._rebuild_merged_css(dict_id)
+            break
+
+    def _rebuild_merged_css(self, dict_id: str) -> None:
+        """重新合并所有 CSS 源文件"""
+        config = load_config(self.media_dir)
+        for index, dictionary in enumerate(config.dictionaries):
+            if dictionary.id != dict_id:
+                continue
+            source_files = dictionary.resources.css_source_files
+            if not source_files:
+                # 没有源文件：清除合并输出
+                output_path = self.media_dir / f"_mdict_{dict_id}_style.css"
+                output_path.unlink(missing_ok=True)
+                config.dictionaries[index] = replace(
+                    dictionary,
+                    resources=DictionaryResources(
+                        has_mdd=dictionary.resources.has_mdd,
+                        resource_count=dictionary.resources.resource_count,
+                        css_file=None,
+                        css_source_files=[],
+                        js_files=dictionary.resources.js_files,
+                    ),
+                )
+                save_config(self.media_dir, config)
+                return
+            # 读取并合并所有源文件
+            parts: list[str] = []
+            for source_filename in source_files:
+                source_path = self.media_dir / source_filename
+                if source_path.exists():
+                    parts.append(_read_css_file(source_path))
+            merged = "\n".join(parts)
+            scoped = scope_css(merged, dict_id)
+            output_path = self.media_dir / f"_mdict_{dict_id}_style.css"
+            _ = output_path.write_text(scoped, encoding="utf-8")
             config.dictionaries[index] = replace(
                 dictionary,
                 resources=DictionaryResources(
                     has_mdd=dictionary.resources.has_mdd,
                     resource_count=dictionary.resources.resource_count,
                     css_file=output_path.name,
+                    css_source_files=source_files,
+                    js_files=dictionary.resources.js_files,
                 ),
             )
-            break
-        save_config(self.media_dir, config)
+            save_config(self.media_dir, config)
+            return
 
     def rename_dictionary(self, dict_id: str, new_name: str) -> None:
         """重命名辞典（仅更新配置名称）"""
@@ -173,30 +232,100 @@ class DictionaryManager:
                     has_mdd=False,
                     resource_count=0,
                     css_file=dictionary.resources.css_file,
+                    css_source_files=dictionary.resources.css_source_files,
+                    js_files=dictionary.resources.js_files,
                 ),
             )
             break
         save_config(self.media_dir, config)
 
-    def delete_css(self, dict_id: str) -> None:
-        """删除 CSS"""
-        css_file = self.media_dir / f"_mdict_{dict_id}_style.css"
-        css_file.unlink(missing_ok=True)
-
+    def delete_css(self, dict_id: str, css_index: int | None = None) -> None:
+        """删除 CSS（支持删除单个或全部）"""
         config = load_config(self.media_dir)
         for index, dictionary in enumerate(config.dictionaries):
             if dictionary.id != dict_id:
                 continue
+            source_files = list(dictionary.resources.css_source_files)
+            if css_index is not None and 0 <= css_index < len(source_files):
+                # 删除指定索引的 CSS 源文件
+                filename = source_files[css_index]
+                file_path = self.media_dir / filename
+                file_path.unlink(missing_ok=True)
+                source_files.pop(css_index)
+            else:
+                # 删除所有 CSS 源文件和合并输出
+                for filename in source_files:
+                    (self.media_dir / filename).unlink(missing_ok=True)
+                source_files = []
+                output_path = self.media_dir / f"_mdict_{dict_id}_style.css"
+                output_path.unlink(missing_ok=True)
             config.dictionaries[index] = replace(
                 dictionary,
                 resources=DictionaryResources(
                     has_mdd=dictionary.resources.has_mdd,
                     resource_count=dictionary.resources.resource_count,
                     css_file=None,
+                    css_source_files=source_files,
+                    js_files=dictionary.resources.js_files,
                 ),
             )
+            save_config(self.media_dir, config)
+            # 如果还有源文件，重新合并
+            if source_files:
+                self._rebuild_merged_css(dict_id)
             break
-        save_config(self.media_dir, config)
+
+    def add_js(self, dict_id: str, js_path: Path) -> None:
+        """添加 JS 文件"""
+        config = load_config(self.media_dir)
+        for index, dictionary in enumerate(config.dictionaries):
+            if dictionary.id != dict_id:
+                continue
+            n = len(dictionary.resources.js_files)
+            js_filename = f"_mdict_{dict_id}_script_{n}.js"
+            dest_path = self.media_dir / js_filename
+            _ = dest_path.write_bytes(js_path.read_bytes())
+            new_js_files = list(dictionary.resources.js_files) + [js_filename]
+            config.dictionaries[index] = replace(
+                dictionary,
+                resources=DictionaryResources(
+                    has_mdd=dictionary.resources.has_mdd,
+                    resource_count=dictionary.resources.resource_count,
+                    css_file=dictionary.resources.css_file,
+                    css_source_files=dictionary.resources.css_source_files,
+                    js_files=new_js_files,
+                ),
+            )
+            save_config(self.media_dir, config)
+            break
+
+    def delete_js(self, dict_id: str, js_index: int | None = None) -> None:
+        """删除 JS 文件（支持删除单个或全部）"""
+        config = load_config(self.media_dir)
+        for index, dictionary in enumerate(config.dictionaries):
+            if dictionary.id != dict_id:
+                continue
+            js_files = list(dictionary.resources.js_files)
+            if js_index is not None and 0 <= js_index < len(js_files):
+                filename = js_files[js_index]
+                (self.media_dir / filename).unlink(missing_ok=True)
+                js_files.pop(js_index)
+            else:
+                for filename in js_files:
+                    (self.media_dir / filename).unlink(missing_ok=True)
+                js_files = []
+            config.dictionaries[index] = replace(
+                dictionary,
+                resources=DictionaryResources(
+                    has_mdd=dictionary.resources.has_mdd,
+                    resource_count=dictionary.resources.resource_count,
+                    css_file=dictionary.resources.css_file,
+                    css_source_files=dictionary.resources.css_source_files,
+                    js_files=js_files,
+                ),
+            )
+            save_config(self.media_dir, config)
+            break
 
     def reorder_dictionaries(self, ordered_ids: list[str]) -> None:
         """调整辞典顺序"""
@@ -208,6 +337,26 @@ class DictionaryManager:
             updated.append(replace(dictionary, order=order))
         config.dictionaries = sorted(updated, key=lambda item: item.order)
         save_config(self.media_dir, config)
+
+
+def _read_css_file(css_path: Path) -> str:
+    """读取 CSS 文件，自动检测编码"""
+    # 先尝试 utf-8
+    try:
+        return css_path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        pass
+    # 尝试 chardet
+    try:
+        chardet = importlib.import_module("chardet")
+        raw = css_path.read_bytes()
+        detected = chardet.detect(raw)
+        enc = detected.get("encoding") or "gbk"
+        return raw.decode(enc, errors="replace")
+    except Exception:
+        pass
+    # 最后回退 gbk
+    return css_path.read_text(encoding="gbk", errors="replace")
 
 
 def json_dumps(payload: dict[str, object] | dict[str, str]) -> str:
@@ -480,6 +629,7 @@ def _load_mdd_class() -> Any | None:
 
     # 先注册虚假包，供相对导入使用
     import types
+
     pkg = types.ModuleType(package_name)
     pkg.__path__ = [str(mdict_query_root)]  # type: ignore[assignment]
     pkg.__package__ = package_name
