@@ -1526,44 +1526,10 @@
     })(ul, wrappers, group.map(function(u) { return u.entry; }));
   }
 
-  function detectLanguage(word) {
-    if (!word) {
-      return null;
-    }
-    if (/[\u3040-\u309F\u30A0-\u30FF\u3400-\u4DBF\u4E00-\u9FFF]/.test(word)) {
-      return 'ja';
-    }
-    if (/[a-zA-Z]/.test(word)) {
-      return 'en';
-    }
+  // 手动搜索/选词时不做语言检测，搜索全部已注入的辞典；
+  // token 点击路径由 lookupFromToken 直接传递字段配置的语言，不经过此函数。
+  function resolveLookupLanguage() {
     return null;
-  }
-
-  function resolveLookupLanguage(word) {
-    var lastLanguage = window.MD._persistent.uiState.lastLookupLanguage || null;
-    if (!word) {
-      return lastLanguage;
-    }
-    var detected = detectLanguage(word);
-    if (detected) {
-      window.MD._persistent.uiState.lastLookupLanguage = detected;
-      return detected;
-    }
-    return lastLanguage;
-  }
-
-  function getLastLookupLanguage() {
-    return window.MD && window.MD.State ? window.MD.State.lastLookupLanguage : null;
-  }
-
-  function setLastLookupLanguage(language) {
-    if (!language) {
-      return;
-    }
-    if (!window.MD.State) {
-      window.MD.State = {};
-    }
-    window.MD.State.lastLookupLanguage = language;
   }
 
   function lookupAndRender(word, dictionaryId, prefixHtml, options) {
@@ -1624,9 +1590,6 @@
      if (!lookupOptions.language) {
        lookupOptions.language = resolveLookupLanguage(word);
      }
-      if (lookupOptions.language) {
-        window.MD._persistent.uiState.lastLookupLanguage = lookupOptions.language;
-      }
        window.MD.Dictionary.lookup(word, dictId, lookupOptions).then(function (result) {
         if (window.MD._persistent.uiState.lookupRequestId !== lookupRequestId) {
           return;
@@ -2265,7 +2228,6 @@
        elements.contentBody.innerHTML = '<div class="md-loading">加载中...</div>';
      }
 
-     setLastLookupLanguage(language);
      lookupAndRender(word, dictionaryId, prefixHtml, { language: language, source: "token" });
    }
 
