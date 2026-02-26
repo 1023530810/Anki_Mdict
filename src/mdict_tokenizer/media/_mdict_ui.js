@@ -1082,6 +1082,12 @@
      }
      var word = href.slice(8);
      if (!word) return "";
+     // 去除 # 锚点片段（如 entry://unsuccessful#unsuccessful → unsuccessful）
+     var hashIndex = word.indexOf("#");
+     if (hashIndex !== -1) {
+       word = word.substring(0, hashIndex);
+     }
+     if (!word) return "";
      try {
        word = decodeURIComponent(word);
      } catch (error) {
