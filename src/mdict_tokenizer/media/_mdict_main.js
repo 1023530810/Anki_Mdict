@@ -227,11 +227,16 @@
 
     return configPromise
       .then(function (config) {
-        // 根据注入语言过滤辞典列表，下游代码只能看到对应语言的辞典
-        // 使用 getInitLanguages 根据当前牌组名（从 DOM 读取）动态解析语言
-        // 不从 data-mdict-lang 读取，因为模板注入的静态值可能与当前牌组语言不符
+        // 根据当前牌组的字段语言配置过滤辞典列表
+        // 使用 getFieldLanguages 根据当前牌组名（从 DOM 的 #mdict-deck-name 读取）
+        // 在 MDICT_DECK_INJECTIONS 中匹配对应牌组的语言配置
+        // 不依赖 tokenizers[lang].dictionaryIds 是否非空，确保即使没有导入对应语言的辞典
+        // 也能正确按语言过滤，避免英语牌组显示日语辞典
         var stateConfig = config || {};
-        var activeLangs = getInitLanguages(stateConfig);
+        var activeLangs = getFieldLanguages(
+          window.MDICT_FIELDS || [],
+          window.MDICT_DECK_INJECTIONS || []
+        );
         if (activeLangs.length > 0) {
           var tokenizers = stateConfig.tokenizers || {};
           var allowedIds = {};
