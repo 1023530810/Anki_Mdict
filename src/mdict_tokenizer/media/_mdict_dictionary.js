@@ -81,12 +81,27 @@
     });
   }
 
+  function caseVariants(word) {
+    var lower = word.toLowerCase();
+    var capitalized = lower.charAt(0).toUpperCase() + lower.slice(1);
+    var variants = [word];
+    if (lower !== word) { variants.push(lower); }
+    if (capitalized !== word && capitalized !== lower) { variants.push(capitalized); }
+    return variants;
+  }
+
   function lookupInDictionary(dictionaryId, word, options) {
     var entry, shardEntry, result, trimmedDef, linkMatch, target;
     options = options || {};
     var followed = options.followed || false;
     return loadIndex(dictionaryId).then(function (indexData) {
-      entry = indexData.entries ? indexData.entries[word] : null;
+      var variants = caseVariants(word);
+      var i;
+      entry = null;
+      for (i = 0; i < variants.length; i++) {
+        entry = indexData.entries ? indexData.entries[variants[i]] : null;
+        if (entry) { break; }
+      }
       if (!entry) {
         return { found: false };
       }
