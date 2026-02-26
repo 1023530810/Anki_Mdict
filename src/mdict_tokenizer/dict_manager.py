@@ -411,6 +411,7 @@ def scope_css(css_text: str, dict_id: str) -> str:
             or lower_selector.startswith("@layer")
             or lower_selector.startswith("@container")
             or lower_selector.startswith("@scope")
+            or lower_selector.startswith("@starting-style")
         )
 
         if not selector:
