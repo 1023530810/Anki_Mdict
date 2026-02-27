@@ -367,7 +367,12 @@
         }
         var selector = ".mdict-field[data-mdict-field='" + field.name + "']";
         var elements = document.querySelectorAll(selector);
-        console.log("[MDict] doTokenizeFields: field=" + field.name + " selector=" + selector + " elements.length=" + elements.length);
+        var allMdictFields = document.querySelectorAll(".mdict-field");
+        var allWithAttr = document.querySelectorAll("[data-mdict-field]");
+        console.log("[MDict] doTokenizeFields: field=" + field.name + " selector=" + selector + " elements.length=" + elements.length
+          + " | allMdictFields=" + allMdictFields.length
+          + " | allWithAttr=" + allWithAttr.length
+          + " | document.body innerHTML snippet=" + (document.body ? document.body.innerHTML.substring(0, 300) : "no body"));
         elements.forEach(function (element) {
           promises.push(window.MD.Tokenizer.tokenizeElement(element, field.language));
         });
