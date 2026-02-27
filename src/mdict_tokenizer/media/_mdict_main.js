@@ -59,10 +59,13 @@
   function getDeckNameFromDom() {
     var deckEl = document.getElementById("mdict-deck-name");
     if (!deckEl) {
+      console.warn("[MDict] #mdict-deck-name element not found in DOM");
       return "";
     }
     var deckName = deckEl.textContent || deckEl.innerText || "";
-    return deckName.replace(/^\s+|\s+$/g, "");
+    var trimmed = deckName.replace(/^\s+|\s+$/g, "");
+    console.log("[MDict] getDeckNameFromDom:", JSON.stringify(trimmed));
+    return trimmed;
   }
 
   function resolveDeckFields(deckName, deckInjections, fieldNames) {
@@ -144,17 +147,23 @@
       window.MDICT_FIELDS || [],
       window.MDICT_DECK_INJECTIONS || []
     );
+    console.log("[MDict] getInitLanguages: fieldLanguages=", fieldLanguages,
+      "MDICT_FIELDS=", window.MDICT_FIELDS,
+      "MDICT_DECK_INJECTIONS=", window.MDICT_DECK_INJECTIONS);
     var languages = [];
     Object.keys(tokenizers).forEach(function (language) {
       var tokenizer = tokenizers[language] || {};
       if (!tokenizer.dictionaryIds || !tokenizer.dictionaryIds.length) {
+        console.log("[MDict] getInitLanguages: skip lang=" + language + " (no dictionaryIds)");
         return;
       }
       if (fieldLanguages.indexOf(language) === -1) {
+        console.log("[MDict] getInitLanguages: skip lang=" + language + " (not in fieldLanguages)");
         return;
       }
       languages.push(language);
     });
+    console.log("[MDict] getInitLanguages result:", languages);
     return languages;
   }
 
@@ -367,6 +376,8 @@
     var fieldNames = window.MDICT_FIELDS || [];
     var deckInjections = window.MDICT_DECK_INJECTIONS || [];
     var fields = resolveDeckFields("", deckInjections, fieldNames);
+    console.log("[MDict] tokenizeFields: resolveDeckFields result=", fields,
+      "fieldNames=", fieldNames, "deckInjections=", deckInjections);
     var promises = [];
     var initLanguages = [];
     var loadedLanguages = window.MD._persistent.loadedLanguages;
