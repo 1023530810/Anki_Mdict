@@ -397,6 +397,7 @@
     while (walker.nextNode()) {
       nodes.push(walker.currentNode);
     }
+    console.log("[MDict Tokenizer] tokenizeElement: lang=" + language + " element=", element, "textNodes=" + nodes.length, "alreadyTokenized=" + !!element.querySelector(".md-token"));
     var tokenizePromise = language === "ja" ? tokenizeJapanese : tokenizeEnglish;
     return Promise.all(
       nodes.map(function (node) {

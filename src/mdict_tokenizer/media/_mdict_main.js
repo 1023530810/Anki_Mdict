@@ -356,15 +356,18 @@
 
   function doTokenizeFields(fields, initLanguages, loadedLanguages, promises) {
     var container = null;
+    console.log("[MDict] doTokenizeFields: fields=", fields, "initLanguages=", initLanguages, "loadedLanguages=", JSON.stringify(loadedLanguages));
     if (fields.length) {
       fields.forEach(function (field) {
         if (initLanguages.length && initLanguages.indexOf(field.language) === -1) {
           if (!loadedLanguages[field.language]) {
+            console.log("[MDict] doTokenizeFields: SKIP field=" + field.name + " lang=" + field.language + " (not in initLanguages and not loaded)");
             return;
           }
         }
         var selector = ".mdict-field[data-mdict-field='" + field.name + "']";
         var elements = document.querySelectorAll(selector);
+        console.log("[MDict] doTokenizeFields: field=" + field.name + " selector=" + selector + " elements.length=" + elements.length);
         elements.forEach(function (element) {
           promises.push(window.MD.Tokenizer.tokenizeElement(element, field.language));
         });
