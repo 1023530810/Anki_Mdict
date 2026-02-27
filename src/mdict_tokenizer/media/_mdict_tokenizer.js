@@ -67,30 +67,41 @@
   }
 
   function initJapanese() {
+    console.log("[MDict Tokenizer] initJapanese called, tokenizerCache.ja=", !!tokenizerCache.ja);
     if (tokenizerCache.ja) {
       return Promise.resolve(tokenizerCache.ja);
     }
     if (typeof window.kuromoji === "undefined") {
+      console.log("[MDict Tokenizer] kuromoji not loaded, loading script...");
       return loadScript("_mdict_kuromoji.js").then(function () {
+        console.log("[MDict Tokenizer] kuromoji script loaded, building tokenizer...");
         return buildJapaneseTokenizer();
+      }).catch(function(e) {
+        console.error("[MDict Tokenizer] kuromoji script load FAILED:", e);
+        throw e;
       });
     }
+    console.log("[MDict Tokenizer] kuromoji already defined, building tokenizer...");
     return buildJapaneseTokenizer();
   }
 
   function buildJapaneseTokenizer() {
     return new Promise(function (resolve, reject) {
       if (!window.kuromoji) {
+        console.error("[MDict Tokenizer] window.kuromoji is not defined");
         reject(new Error("TOKENIZER_NOT_FOUND"));
         return;
       }
+      console.log("[MDict Tokenizer] kuromoji.builder starting...");
       window.kuromoji
         .builder({ dicPath: "_mdict_kuromoji_" })
         .build(function (error, tokenizer) {
           if (error) {
+            console.error("[MDict Tokenizer] kuromoji build FAILED:", error);
             reject(new Error("TOKENIZER_LOAD_FAILED"));
             return;
           }
+          console.log("[MDict Tokenizer] kuromoji build SUCCESS");
           tokenizerCache.ja = tokenizer;
           resolve(tokenizer);
         });
@@ -98,13 +109,19 @@
   }
 
   function initEnglish() {
+    console.log("[MDict Tokenizer] initEnglish called, tokenizerCache.en=", !!tokenizerCache.en);
     if (tokenizerCache.en) {
       return Promise.resolve(tokenizerCache.en);
     }
     if (typeof window.nlp === "undefined") {
+      console.log("[MDict Tokenizer] compromise not loaded, loading script...");
       return loadScript("_mdict_compromise.min.js").then(function () {
+        console.log("[MDict Tokenizer] compromise loaded");
         tokenizerCache.en = window.nlp;
         return loadCmuDict();
+      }).catch(function(e) {
+        console.error("[MDict Tokenizer] compromise script load FAILED:", e);
+        throw e;
       });
     }
     tokenizerCache.en = window.nlp;

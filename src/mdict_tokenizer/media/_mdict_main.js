@@ -321,17 +321,21 @@
     var initLanguages = getInitLanguages(config);
     var tasks = [];
     var loadedLanguages = window.MD._persistent.loadedLanguages;
+    console.log("[MDict] initTokenizers: initLanguages=", initLanguages, "loadedLanguages=", JSON.stringify(loadedLanguages));
     if (window.MD.State) {
       window.MD.State.initLanguages = initLanguages;
     }
      initLanguages.forEach(function (language) {
        if (loadedLanguages[language]) {
+         console.log("[MDict] initTokenizers: lang=" + language + " already loaded, skipping");
          window.MD._persistent.stats.tokenizerHitCount++;
          return;
        }
       if (tokenizers[language]) {
+        console.log("[MDict] initTokenizers: starting init for lang=" + language);
         tasks.push(
           window.MD.Tokenizer.init(language).then(function () {
+            console.log("[MDict] initTokenizers: lang=" + language + " init SUCCESS");
             loadedLanguages[language] = true;
             // Fire-and-forget: preload dictionary indexes for this language
             var langConfig = tokenizers[language];
@@ -340,6 +344,9 @@
                 // Silently ignore preload failures
               });
             }
+          }).catch(function(e) {
+            console.error("[MDict] initTokenizers: lang=" + language + " init FAILED:", e);
+            throw e;
           })
         );
       }
